@@ -2,30 +2,26 @@ package stately
 
 import io.vavr.PartialFunction
 
+typealias Receive = PartialFunction<Any, out Next>
+
 interface State {
 
-    fun receive(): PartialFunction<Any, out Next>
+    val receive: Receive
 
-    fun receiveAll(): PartialFunction<Any, out Next> {
-        return when {
-            this is ParentState -> receive().orElse(childState.receiveAll())
-            else -> receive()
-        }
-    }
-
-    fun onStart(from: State): Next {
+    fun onStart(): Next {
         return Stay
     }
 
-    fun onEnd(to: State) {}
+    fun onEnd() {}
 }
 
+// TODO: generic type???
 interface ParentState : State {
     val childState: State
 }
 
 interface FooState : State {
-     override fun onStart(from: State): Next {
+     override fun onStart(): Next {
         return Stay
     }
 }
@@ -35,5 +31,5 @@ object Stay : Next()
 data class Goto(val state: State) : Next()
 data class Start(val state: State) : Next()
 object Done : Next()
-object Pass : Next()
-data class Reset(val state: State) : Next()
+data class Clear(val state: State) : Next()
+// TODO: Async modifiers

@@ -19,6 +19,7 @@ dependencies {
 
     testCompile("junit", "junit", "4.12")
     testCompile("com.google.inject", "guice", "4.0")
+    testCompile("org.hamcrest", "hamcrest-all", "1.3")
 }
 
 configure<JavaPluginConvention> {
