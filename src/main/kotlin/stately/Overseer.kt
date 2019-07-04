@@ -4,6 +4,7 @@ import io.vavr.collection.List
 import io.vavr.collection.Seq
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
+// TODO: Have both on start/end and on focus gained/lost for async support.
 class Overseer {
 
     constructor(initialState: State) {
@@ -28,46 +29,65 @@ class Overseer {
     }
 
     private fun init() {
-        stack.headOption().peek { it.state.onStart() }
+        stack.headOption().peek { process(it, 0, it.state.onStart()) }
+    }
+
+    private fun foo(element: StackElement, stackIndex: Int, next: Next) {
+
     }
 
     // TODO: support processing state other than the head?
-    private fun process(element: StackElement, stackIndex: Int, next: Next) {
-        when (next) {
+    private tailrec fun process(element: StackElement, stackIndex: Int, next: Next) {
+        val result =  when (next) {
             is Goto -> goto(element, stackIndex, next)
-            is Stay -> {}
-            is Start -> start(next)
+            is Stay -> null
+            is Start -> start(stackIndex, next)
             is Done -> done(element, stackIndex)
             is Clear -> clear(next)
         }
-    }
 
-    private fun goto(processed: StackElement, stackIndex: Int, goto: Goto) {
-        stack = stack.update(stackIndex, StackElement(goto.state))
-        if (stackIndex == 0) {
-            processed.state.onEnd()
-            goto.state.onStart()
+        if (result != null) {
+            return process(result.nextElement, result.nextIndex, result.onStart)
         }
     }
 
-    private fun start(start: Start) {
-        stack.headOption().peek { it.state.onEnd() }
-        stack = stack.prepend(StackElement(start.state))
-        start.state.onStart()
+    private fun goto(processed: StackElement, stackIndex: Int, goto: Goto): Result? {
+        val new = StackElement(goto.state)
+        stack = stack.update(stackIndex, new)
+        return if (stackIndex == 0) {
+            processed.state.onEnd()
+            Result(new, stackIndex, new.state.onStart())
+        } else {
+            null
+        }
     }
 
-    private fun done(processed: StackElement, stackIndex: Int) {
+    // TODO: consider allowing the state to start at the top/bottom of the stack
+    private fun start(stackIndex: Int, start: Start): Result {
+        stack.headOption().peek { it.state.onEnd() }
+        val new = StackElement(start.state)
+        stack = stack.insert(stackIndex, new)
+        return Result(new, stackIndex, new.state.onStart())
+    }
+
+    private fun done(processed: StackElement, stackIndex: Int): Result? {
         stack = stack.removeAt(stackIndex)
-        if (stackIndex == 0) {
+        return if (stackIndex == 0) {
             processed.state.onEnd()
-            stack.headOption().peek { it.state.onStart() }
+            stack.headOption().map {
+                Result(it, stackIndex, it.state.onStart())
+            }.orNull
+        } else {
+            null
         }
     }
 
-    private fun clear(clear: Clear) {
+    // TODO: Consider allowing to clear to nothing or to another stack of states.
+    private fun clear(clear: Clear): Result {
         stack.headOption().peek { it.state.onEnd() }
-        stack = newStack().prepend(StackElement(clear.state))
-        clear.state.onStart()
+        val new = StackElement(clear.state)
+        stack = newStack().prepend(new)
+        return Result(new, 0, clear.state.onStart())
     }
 
     private fun newStack() = List.empty<StackElement>()
@@ -85,3 +105,5 @@ data class StackElement(val state: State) {
         acc
     }
 }
+
+private data class Result(val nextElement: StackElement, val nextIndex: Int, val onStart: Next)

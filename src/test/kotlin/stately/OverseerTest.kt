@@ -55,7 +55,6 @@ class OverseerTest {
     }
 
     @Test
-    @Ignore
     fun basicTransitionsOnStart() {
         val s1 = ChildState("1")
         val s2 = ChildState("2", Goto(s1))
@@ -67,6 +66,32 @@ class OverseerTest {
         s2.assertCounts(1, 1)
         s3.assertCounts(1, 1)
 
+        overseer.handleMessage(Goto(s2))
+        overseer.assertStack(s3, s1)
+        s1.assertCounts(2, 1)
+        s2.assertCounts(2, 2)
+        s3.assertCounts(1, 1)
+
+        val s4 = ChildState("4", Done)
+
+        overseer.handleMessage(Start(s4))
+        overseer.assertStack(s3, s1)
+        s1.assertCounts(3, 2)
+        s2.assertCounts(2, 2)
+        s3.assertCounts(1, 1)
+        s4.assertCounts(1, 1)
+
+        val s5 = ChildState("5", Start(s3))
+        val s6 = ChildState("6", Clear(s5))
+
+        overseer.handleMessage(Goto(s6))
+        overseer.assertStack(s5, s3, s1)
+        s1.assertCounts(4, 3)
+        s2.assertCounts(3, 3)
+        s3.assertCounts(2, 2)
+        s4.assertCounts(1, 1)
+        s5.assertCounts(1, 1)
+        s6.assertCounts(1, 1)
     }
 
     private fun Overseer.assertStack(vararg states: State) {
