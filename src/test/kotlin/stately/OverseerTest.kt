@@ -1,5 +1,7 @@
 package stately
 
+import io.vavr.Tuple
+import io.vavr.collection.List
 import io.vavr.collection.Queue
 import io.vavr.collection.Seq
 import org.hamcrest.MatcherAssert.assertThat
@@ -222,5 +224,43 @@ fun <V> assertIterableContents(actual: Iterable<V>, vararg expected: V) {
         assertThat(actual, emptyIterable())
     } else {
         assertThat(actual, contains(*expected))
+    }
+}
+
+private class TestStateChecker(vararg states: TestState) {
+
+    private var expectations = List.of(*states).toMap { Tuple.of(it.id, TestStateExpectation(it)) }
+
+    fun expect(
+        state: TestState,
+        startCount: Int? = null,
+        endCount: Int? = null,
+        events: Iterable<*>? = null
+    ): TestStateChecker {
+
+        val expectation = expectations.get(state.id).getOrElse { TestStateExpectation(state) }
+        val updated = expectation.copy(
+            startCount = startCount ?: expectation.startCount,
+            endCount = endCount ?: expectation.endCount,
+            events = events ?: expectation.events
+        )
+        expectations = expectations.put(state.id, updated)
+        return this
+    }
+
+    fun assert() {
+        expectations.values().forEach { it.assert() }
+    }
+}
+
+private data class TestStateExpectation(
+    val state: TestState,
+    val startCount: Int = 0,
+    val endCount: Int = 0,
+    val events: Iterable<*> = List.empty<Any>()
+) {
+    fun assert() {
+        state.assertCounts(startCount, endCount)
+        assertIterableContents(state.events, events)
     }
 }
