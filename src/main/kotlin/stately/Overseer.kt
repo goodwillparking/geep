@@ -1,6 +1,7 @@
 package stately
 
 import io.vavr.collection.List
+import io.vavr.collection.Queue
 import io.vavr.collection.Seq
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
@@ -96,8 +97,8 @@ class Overseer {
 data class StackElement(val state: State) {
     // TODO: need to be lazy?
     val chain: Seq<State> by lazy {
-        var acc = List.of(state)
         var s = state
+        var acc = Queue.of(s)
         while (s is ParentState) {
             s = s.childState
             acc = acc.append(s)
