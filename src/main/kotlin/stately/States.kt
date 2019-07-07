@@ -20,12 +20,6 @@ interface ParentState : State {
     val childState: State
 }
 
-interface FooState : State {
-     override fun onFocusGained(): Next {
-        return Stay
-    }
-}
-
 sealed class Next
 object Stay : Next()
 data class Goto(val state: State) : Next()

@@ -18,7 +18,6 @@ dependencies {
     compile(group = "io.vavr", name = "vavr", version = "0.9.0")
 
     testCompile("junit", "junit", "4.12")
-    testCompile("com.google.inject", "guice", "4.0")
     testCompile("org.hamcrest", "hamcrest-all", "1.3")
 }
 

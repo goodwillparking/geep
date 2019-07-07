@@ -2,23 +2,10 @@ package stately
 
 import io.vavr.PartialFunction
 import io.vavr.Tuple2
-import io.vavr.collection.Seq
 import java.lang.IllegalStateException
 
 internal operator fun <A, B> Tuple2<A, B>.component1() = _1
 internal operator fun <A, B> Tuple2<A, B>.component2() = _2
-
-fun <T> divergenceRight(a: Seq<T>, b: Seq<T>, predicate: (T, T) -> Boolean): Pair<Seq<T>, Seq<T>> {
-    var divergedB = b.reverse()
-    val divergedA = a.dropRightUntil { at ->
-        val inCommon = divergedB.headOption().exists { predicate(it, at) }
-        if (inCommon) {
-            divergedB = divergedB.tail()
-        }
-        !inCommon
-    }
-    return divergedA to divergedB.reverse()
-}
 
 fun <T, R> empty(): PartialFunction<T, R> = object : PartialFunction<T, R> {
     override fun apply(t: T) = throw IllegalStateException("PF not defined")

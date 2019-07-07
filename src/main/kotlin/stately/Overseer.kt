@@ -33,10 +33,6 @@ class Overseer {
         stack.headOption().peek { process(it, 0, it.state.onFocusGained()) }
     }
 
-    private fun foo(element: StackElement, stackIndex: Int, next: Next) {
-
-    }
-
     // TODO: support processing state other than the head?
     private tailrec fun process(element: StackElement, stackIndex: Int, next: Next) {
         val result =  when (next) {
