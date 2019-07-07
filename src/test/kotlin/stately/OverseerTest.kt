@@ -1,11 +1,5 @@
 package stately
 
-import io.vavr.collection.Queue
-import io.vavr.collection.Seq
-import org.hamcrest.MatcherAssert.assertThat
-import org.hamcrest.Matchers.contains
-import org.hamcrest.Matchers.emptyIterable
-import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.*
 
@@ -140,87 +134,5 @@ class OverseerTest {
         s1.assertEvents("1", "2")
         s2.assertEvents(1, 2)
         s3.assertEvents(1.0, 2.0)
-    }
-
-    private fun Overseer.assertStack(vararg states: State) {
-        assertIterableContents(stack.reverse().map { it.state }, *states)
-    }
-}
-
-private sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : State {
-
-    var events: Seq<Any> = Queue.empty()
-        private set
-    var focusGainedCount = 0
-        private set
-    var focusLostCount = 0
-        private set
-
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (javaClass != other?.javaClass) return false
-
-        other as BaseTestState
-
-        if (id != other.id) return false
-
-        return true
-    }
-
-    override fun hashCode(): Int {
-        return id.hashCode()
-    }
-
-    override val receive: Receive = empty<Any, Next>()
-        .match { n: Next -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events.append(a); Stay }
-
-    override fun onFocusGained(): Next = Stay.also { focusGainedCount++ }
-
-    override fun onFocusLost() {
-        focusLostCount++
-    }
-
-    fun assertCounts(focusGained: Int, focusLost: Int) {
-        assertEquals(focusGained, focusGainedCount)
-        assertEquals(focusLost, focusLostCount)
-    }
-
-    fun assertEvents(vararg events: Any) {
-        assertIterableContents(this.events, *events)
-    }
-}
-
-private class TestParentState(
-    id: String,
-    interceptedType: Class<*>,
-    override val childState: BaseTestState
-) : BaseTestState(id, interceptedType), ParentState {
-    constructor(id: String, child: BaseTestState) : this(id, Any::class.java, child)
-
-    override fun toString() =
-        "TestParentState(id='$id', childId='${childState.id}' focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
-
-}
-
-private class TestState(
-    id: String,
-    val onFocusGained: Next = Stay,
-    interceptedType: Class<*> = Any::class.java
-) : BaseTestState(id, interceptedType) {
-
-    override fun toString() = "TestState(id='$id', focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
-
-    override fun onFocusGained(): Next {
-        super.onFocusGained()
-        return onFocusGained
-    }
-}
-
-fun <V> assertIterableContents(actual: Iterable<V>, vararg expected: V) {
-    if (!expected.iterator().hasNext()) {
-        assertThat(actual, emptyIterable())
-    } else {
-        assertThat(actual, contains(*expected))
     }
 }
