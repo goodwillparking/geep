@@ -12,7 +12,7 @@ import java.util.*
 class OverseerTest {
 
     @Test
-    fun basicTransitions() {
+    fun `states should be able to modify the stack when they receive messages`() {
         val s1 = TestState("1")
         val overseer = Overseer(s1)
         overseer.assertStack(s1)
@@ -56,7 +56,7 @@ class OverseerTest {
     }
 
     @Test
-    fun basicTransitionsOnStart() {
+    fun `states should be able to modify the stack when they gain focus`() {
         val s1 = TestState("1")
         val s2 = TestState("2", Goto(s1))
         val s3 = TestState("3", Start(s2))
@@ -151,9 +151,9 @@ private sealed class BaseTestState(val id: String, val interceptedType: Class<*>
 
     var events: Seq<Any> = Queue.empty()
         private set
-    var startCount = 0
+    var focusGainedCount = 0
         private set
-    var endCount = 0
+    var focusLostCount = 0
         private set
 
     override fun equals(other: Any?): Boolean {
@@ -175,15 +175,15 @@ private sealed class BaseTestState(val id: String, val interceptedType: Class<*>
         .match { n: Next -> n }
         .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events.append(a); Stay }
 
-    override fun onStart(): Next = Stay.also { startCount++ }
+    override fun onFocusGained(): Next = Stay.also { focusGainedCount++ }
 
-    override fun onEnd() {
-        endCount++
+    override fun onFocusLost() {
+        focusLostCount++
     }
 
-    fun assertCounts(start: Int, end: Int) {
-        assertEquals(start, startCount)
-        assertEquals(end, endCount)
+    fun assertCounts(focusGained: Int, focusLost: Int) {
+        assertEquals(focusGained, focusGainedCount)
+        assertEquals(focusLost, focusLostCount)
     }
 
     fun assertEvents(vararg events: Any) {
@@ -199,21 +199,21 @@ private class TestParentState(
     constructor(id: String, child: BaseTestState) : this(id, Any::class.java, child)
 
     override fun toString() =
-        "TestParentState(id='$id', childId='${childState.id}' startCount=$startCount, endCount=$endCount, events=$events)"
+        "TestParentState(id='$id', childId='${childState.id}' focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
 
 }
 
 private class TestState(
     id: String,
-    val onStart: Next = Stay,
+    val onFocusGained: Next = Stay,
     interceptedType: Class<*> = Any::class.java
 ) : BaseTestState(id, interceptedType) {
 
-    override fun toString() = "TestState(id='$id', startCount=$startCount, endCount=$endCount, events=$events)"
+    override fun toString() = "TestState(id='$id', focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
 
-    override fun onStart(): Next {
-        super.onStart()
-        return onStart
+    override fun onFocusGained(): Next {
+        super.onFocusGained()
+        return onFocusGained
     }
 }
 

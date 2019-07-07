@@ -8,11 +8,11 @@ interface State {
 
     val receive: Receive
 
-    fun onStart(): Next {
+    fun onFocusGained(): Next {
         return Stay
     }
 
-    fun onEnd() {}
+    fun onFocusLost() {}
 }
 
 // TODO: generic type???
@@ -21,7 +21,7 @@ interface ParentState : State {
 }
 
 interface FooState : State {
-     override fun onStart(): Next {
+     override fun onFocusGained(): Next {
         return Stay
     }
 }

@@ -30,7 +30,7 @@ class Overseer {
     }
 
     private fun init() {
-        stack.headOption().peek { process(it, 0, it.state.onStart()) }
+        stack.headOption().peek { process(it, 0, it.state.onFocusGained()) }
     }
 
     private fun foo(element: StackElement, stackIndex: Int, next: Next) {
@@ -56,8 +56,8 @@ class Overseer {
         val new = StackElement(goto.state)
         stack = stack.update(stackIndex, new)
         return if (stackIndex == 0) {
-            processed.state.onEnd()
-            Result(new, stackIndex, new.state.onStart())
+            processed.state.onFocusLost()
+            Result(new, stackIndex, new.state.onFocusGained())
         } else {
             null
         }
@@ -65,18 +65,18 @@ class Overseer {
 
     // TODO: consider allowing the state to start at the top/bottom of the stack
     private fun start(stackIndex: Int, start: Start): Result {
-        stack.headOption().peek { it.state.onEnd() }
+        stack.headOption().peek { it.state.onFocusLost() }
         val new = StackElement(start.state)
         stack = stack.insert(stackIndex, new)
-        return Result(new, stackIndex, new.state.onStart())
+        return Result(new, stackIndex, new.state.onFocusGained())
     }
 
     private fun done(processed: StackElement, stackIndex: Int): Result? {
         stack = stack.removeAt(stackIndex)
         return if (stackIndex == 0) {
-            processed.state.onEnd()
+            processed.state.onFocusLost()
             stack.headOption().map {
-                Result(it, stackIndex, it.state.onStart())
+                Result(it, stackIndex, it.state.onFocusGained())
             }.orNull
         } else {
             null
@@ -85,10 +85,10 @@ class Overseer {
 
     // TODO: Consider allowing to clear to nothing or to another stack of states.
     private fun clear(clear: Clear): Result {
-        stack.headOption().peek { it.state.onEnd() }
+        stack.headOption().peek { it.state.onFocusLost() }
         val new = StackElement(clear.state)
         stack = newStack().prepend(new)
-        return Result(new, 0, clear.state.onStart())
+        return Result(new, 0, clear.state.onFocusGained())
     }
 
     private fun newStack() = List.empty<StackElement>()
