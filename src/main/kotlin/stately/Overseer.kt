@@ -63,6 +63,8 @@ class Overseer {
         log.debug("Processing Next for State. next: {}, state {}", next, element?.element?.state)
 
         val oldFocused: StackElement? = stack.headOption().orNull
+        // TODO: Should a state lose and gain focus
+        //  if it is at the top of the stack before and after the transition is processed?
         if (oldFocused != null && next !is Stay) {
             log.debug("Focus lost for state {}", oldFocused.state)
             oldFocused.state.onFocusLost()
@@ -71,7 +73,7 @@ class Overseer {
         val newStack = processNextAndApplyStartResult(stack, next, element)
         val newFocused: StackElement? = newStack.headOption().orNull
 
-        return if (oldFocused !== newFocused) {
+        return if (next !is Stay || oldFocused?.state !== newFocused?.state) {
             if (newFocused != null) {
                 processNext(newStack, newFocused.state.onFocusGained(), IndexedElement(newFocused, 0))
             } else {
