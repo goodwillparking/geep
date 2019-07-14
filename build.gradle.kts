@@ -5,7 +5,7 @@ plugins {
     kotlin("jvm") version "1.3.20"
 }
 
-group = "wlparker"
+group = "goodwillparking"
 version = "1.0"
 
 repositories {
