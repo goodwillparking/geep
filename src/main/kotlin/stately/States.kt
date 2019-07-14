@@ -4,6 +4,8 @@ import io.vavr.PartialFunction
 
 typealias Receive = PartialFunction<Any, out Next>
 
+typealias ReceiveBuilder = PFBuilder<Any, Next>
+
 interface State {
 
     val receive: Receive

@@ -206,7 +206,7 @@ class OverseerTest {
     fun `transition handlers should be called in the order of onFocusLost, onEnd, onStart, onFocusGained`() {
 
         fun mockState() = mock(State::class.java).also {
-            `when`(it.receive).thenReturn(empty<Any, Next>().match { n: Next -> n })
+            `when`(it.receive).thenReturn(ReceiveBuilder().match { n: Next -> n })
             `when`(it.onStart()).thenReturn(Stay)
             `when`(it.onFocusGained()).thenReturn(Stay)
         }

@@ -33,7 +33,7 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : Stat
         return id.hashCode()
     }
 
-    override val receive: Receive = empty<Any, Next>()
+    override val receive: Receive = ReceiveBuilder()
         .match { n: Next -> n }
         .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events.append(a); Stay }
 
