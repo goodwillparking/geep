@@ -232,4 +232,22 @@ class OverseerTest {
 
         inOrder.verifyNoMoreInteractions()
     }
+
+    @Test
+    fun `a state can be started by calling start on the overseer`() {
+
+        val overseer = Overseer()
+        overseer.assertStack()
+
+        val s1 = TestState("1")
+        overseer.start(s1)
+        overseer.assertStack(s1)
+        s1.assertCounts(1, 0, 1, 0)
+
+        val s2 = TestState("2")
+        overseer.start(s2)
+        overseer.assertStack(s1, s2)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(1, 0, 1, 0)
+    }
 }

@@ -9,14 +9,14 @@ private typealias Stack = Seq<StackElement>
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
-class Overseer {
+class Overseer() {
 
     companion object {
         private val log = LoggerFactory.getLogger(Overseer::class.java)
     }
 
-    constructor(initialState: State) {
-        stack = start(Start(initialState))
+    constructor(initialState: State) : this() {
+        start(initialState)
     }
 
     var stack: Stack = newStack()
@@ -35,7 +35,9 @@ class Overseer {
             .getOrElse { stack }
     }
 
-    fun start(start: Start) = processNext(stack, start, stack.headOption().map { IndexedElement(it, 0) }.orNull)
+    fun start(state: State) {
+        stack = processNext(stack, Start(state), stack.headOption().map { IndexedElement(it, 0) }.orNull)
+    }
 
     // TODO: support processing state other than the head?
     private tailrec fun processNext(stack: Stack, next: Next, element: IndexedElement? = null): Stack {
