@@ -8,6 +8,12 @@ interface State {
 
     val receive: Receive
 
+    fun onStart(): Next {
+        return Stay
+    }
+
+    fun onEnd() {}
+
     fun onFocusGained(): Next {
         return Stay
     }
