@@ -1,6 +1,9 @@
 package stately
 
 import org.junit.Test
+import org.mockito.Mockito.`when`
+import org.mockito.Mockito.inOrder
+import org.mockito.Mockito.mock
 import java.util.Locale
 
 class OverseerTest {
@@ -197,5 +200,36 @@ class OverseerTest {
         overseer.handleMessage(Goto(s1))
         overseer.assertStack(s1)
         s1.assertCounts(2, 1, 2, 1)
+    }
+
+    @Test
+    fun `transition handlers should be called in the order of onFocusLost, onEnd, onStart, onFocusGained`() {
+
+        fun mockState() = mock(State::class.java).also {
+            `when`(it.receive).thenReturn(empty<Any, Next>().match { n: Next -> n })
+            `when`(it.onStart()).thenReturn(Stay)
+            `when`(it.onFocusGained()).thenReturn(Stay)
+        }
+
+        val s1 = mockState()
+        val s2 = mockState()
+        val inOrder = inOrder(s1, s2)
+
+        val overseer = Overseer(s1)
+        overseer.assertStack(s1)
+
+        overseer.handleMessage(Goto(s2))
+        overseer.assertStack(s2)
+
+        inOrder.verify(s1).onStart()
+        inOrder.verify(s1).onFocusGained()
+
+        inOrder.verify(s1).onFocusLost()
+        inOrder.verify(s1).onEnd()
+
+        inOrder.verify(s2).onStart()
+        inOrder.verify(s2).onFocusGained()
+
+        inOrder.verifyNoMoreInteractions()
     }
 }
