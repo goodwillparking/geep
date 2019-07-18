@@ -13,5 +13,5 @@ fun <V> assertIterableContents(actual: Iterable<V>, vararg expected: V) {
 }
 
 fun Overseer.assertStack(vararg states: State) {
-    assertIterableContents(stack.reverse().map { it.state }, *states)
+    assertIterableContents(stack().asReversed(), *states)
 }

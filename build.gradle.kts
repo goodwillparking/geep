@@ -15,7 +15,6 @@ repositories {
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
 
-    compile(group = "io.vavr", name = "vavr", version = "0.9.0")
     compile(group = "org.slf4j", name = "slf4j-api", version = "1.7.25")
 
     testCompile(group = "ch.qos.logback", name = "logback-classic", version = "0.9.26")

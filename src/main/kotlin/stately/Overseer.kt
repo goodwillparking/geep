@@ -1,11 +1,8 @@
 package stately
 
-import io.vavr.collection.List
-import io.vavr.collection.Queue
-import io.vavr.collection.Seq
 import org.slf4j.LoggerFactory
+import java.util.LinkedList
 
-private typealias Stack = Seq<StackElement>
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
@@ -19,55 +16,49 @@ class Overseer() {
         start(initialState)
     }
 
-    var stack: Stack = newStack()
-        private set
+    private val stack: MutableList<StackElement> = LinkedList()
+
+    fun stack() = stack.map { it.state }
 
     fun handleMessage(message: Any, index: Int = 0) {
-        if (index < 0 || index >= stack.size()) {
-            log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size())
+        if (index < 0 || index >= stack.size) {
+            log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size)
             return
         }
 
-        val element = stack.get(index)
-        stack = element.chain
+        val element = stack[index]
+        element.chain
             .find { state -> state.receive.isDefinedAt(message) }
-            .map {
+            ?.also {
                 log.debug("Applying message to state. message: {}, state: {}", message, element.state)
-                processNext(stack, it.receive.apply(message), IndexedElement(element, index))
+                processNext(it.receive.apply(message), IndexedElement(element, index))
             }
-            .getOrElse(stack)
     }
 
     fun start(state: State) {
-        stack = processNext(stack, Start(state), stack.headOption().map { IndexedElement(it, 0) }.orNull)
+        processNext(Start(state), stack.firstOrNull()?.let { IndexedElement(it, 0) })
     }
 
     // TODO: support processing state other than the head?
-    private tailrec fun processNext(stack: Stack, next: Next, element: IndexedElement? = null): Stack {
+    private tailrec fun processNext(next: Next, element: IndexedElement? = null) {
 
-        tailrec fun processNextAndApplyStartResult(stack: Stack, next: Next, element: IndexedElement?): Stack {
-            val result = when (next) {
-                is Goto -> element?.let { goto(stack, next, it) }
+        tailrec fun processNextAndApplyStartResult(next: Next, element: IndexedElement?) {
+            val newElement: IndexedElement? = when (next) {
+                is Goto -> element?.let { goto(next, it) }
                 is Stay -> null
-                is Start -> start(stack, next, element)
-                is Done -> element?.let { done(stack, it) }
-                is Clear -> clear(stack, next)
-            } ?: Result(stack)
+                is Start -> start(next, element)
+                is Done -> { element?.also { done(it) }; null}
+                is Clear -> clear(next)
+            }
 
-            return if (result.newElement != null) {
-                processNextAndApplyStartResult(
-                    result.stack,
-                    result.newElement.element.state.onStart(),
-                    result.newElement
-                )
-            } else {
-                result.stack
+            if (newElement != null) {
+                processNextAndApplyStartResult(newElement.element.state.onStart(), newElement)
             }
         }
 
         log.debug("Processing Next for State. next: {}, state {}", next, element?.element?.state)
 
-        val oldFocused: StackElement? = stack.headOption().orNull
+        val oldFocused: StackElement? = stack.firstOrNull()
         // TODO: Should a state lose and gain focus
         //  if it is at the top of the stack before or after the transition is processed?
         if ((element?.index == 0 || next is Clear) && oldFocused != null && next !is Stay) {
@@ -75,73 +66,60 @@ class Overseer() {
             oldFocused.state.onFocusLost()
         }
 
-        val newStack = processNextAndApplyStartResult(stack, next, element)
-        val newFocused: StackElement? = newStack.headOption().orNull
+        processNextAndApplyStartResult(next, element)
+        val newFocused: StackElement? = stack.firstOrNull()
 
-        return if ((element?.index == 0 || element == null || next is Clear)
-            && (next !is Stay || oldFocused?.state !== newFocused?.state)
+        if (((element?.index == 0 || element == null || next is Clear)
+                && (next !is Stay || oldFocused?.state !== newFocused?.state))
+            && newFocused != null
         ) {
-            if (newFocused != null) {
-                processNext(newStack, newFocused.state.onFocusGained(), IndexedElement(newFocused, 0))
-            } else {
-                newStack
-            }
-        } else {
-            newStack
+            processNext(newFocused.state.onFocusGained(), IndexedElement(newFocused, 0))
         }
     }
 
-    private fun goto(stack: Stack, goto: Goto, element: IndexedElement): Result {
+    private fun goto(goto: Goto, element: IndexedElement): IndexedElement? {
         val new = StackElement(goto.state)
-        val newStack = stack.update(element.index, new)
+        stack[element.index] = new
         element.element.state.onEnd()
-        return Result(newStack, new, element.index)
+        return IndexedElement(new, element.index)
     }
 
     // TODO: consider allowing the state to start at the top/bottom of the stack
-    private fun start(stack: Stack, start: Start, element: IndexedElement?): Result {
+    private fun start(start: Start, element: IndexedElement?): IndexedElement? {
         val new = StackElement(start.state)
-        val newStack = if (element != null) {
-            stack.insert(element.index, new)
-        } else {
-            stack.prepend(new)
-        }
-        return Result(newStack, new, if (element == null) 0 else element.index)
+        val index = element?.index ?: 0
+        stack.add(index, new)
+        return IndexedElement(new, index)
     }
 
-    private fun done(stack: Stack, element: IndexedElement): Result {
-        val newStack = stack.removeAt(element.index)
+    private fun done(element: IndexedElement) {
+        stack.removeAt(element.index)
         element.element.state.onEnd()
-        return Result(newStack)
     }
 
     // TODO: Consider allowing to clear to nothing or to another stack of states.
-    private fun clear(stack: Stack, clear: Clear): Result {
+    private fun clear(clear: Clear): IndexedElement? {
         stack.forEach { it.state.onEnd() }
         val new = StackElement(clear.state)
-        val newStack = newStack().prepend(new)
-        return Result(newStack, new, 0)
+        stack.clear()
+        stack.add(new)
+        return IndexedElement(new, 0)
     }
 
-    private fun newStack() = List.empty<StackElement>()
 }
 
-data class StackElement(val state: State) {
+private data class StackElement(val state: State) {
     // TODO: need to be lazy?
-    val chain: Seq<State> by lazy {
+    val chain: List<State> by lazy {
         var s = state
-        var acc = Queue.of(s)
+        val acc = LinkedList<State>()
+        acc.add(s)
         while (s is ParentState) {
             s = s.childState
-            acc = acc.append(s)
+            acc.add(s)
         }
         acc
     }
-}
-
-
-private data class Result(val stack: Stack, val newElement: IndexedElement? = null) {
-    constructor(stack: Stack, element: StackElement, index: Int) : this(stack, IndexedElement(element, index))
 }
 
 private data class IndexedElement(val element: StackElement, val index: Int)

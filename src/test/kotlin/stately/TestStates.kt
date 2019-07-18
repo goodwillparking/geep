@@ -1,13 +1,11 @@
 package stately
 
-import io.vavr.collection.Queue
-import io.vavr.collection.Seq
 import org.junit.Assert
 
 
 sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : State {
 
-    var events: Seq<Any> = Queue.empty()
+    var events: List<Any> = emptyList()
         private set
     var startCount = 0
         private set
@@ -35,7 +33,7 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : Stat
 
     override val receive: Receive = ReceiveBuilder()
         .match { n: Next -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events.append(a); Stay }
+        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay }
 
     override fun onStart(): Next = Stay.also { startCount++ }
 
