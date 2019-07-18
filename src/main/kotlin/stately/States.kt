@@ -1,7 +1,5 @@
 package stately
 
-import io.vavr.PartialFunction
-
 typealias Receive = PartialFunction<Any, out Next>
 
 typealias ReceiveBuilder = PFBuilder<Any, Next>
