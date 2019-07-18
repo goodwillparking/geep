@@ -250,4 +250,55 @@ class OverseerTest {
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 0)
     }
+
+    @Test
+    fun `states should be able to modify the stack in the middle of the stack`() {
+        val s1 = TestState("1")
+        val s2 = TestState("2")
+        val s3 = TestState("3")
+
+        val overseer = Overseer(s1)
+        overseer.start(s2)
+        overseer.start(s3)
+        overseer.assertStack(s1, s2, s3)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(1, 0, 1, 1)
+        s3.assertCounts(1, 0, 1, 0)
+
+        overseer.handleMessage(Stay, 1)
+        overseer.assertStack(s1, s2, s3)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(1, 0, 1, 1)
+        s3.assertCounts(1, 0, 1, 0)
+
+        val s4 = TestState("4")
+        overseer.handleMessage(Goto(s4), 1)
+        overseer.assertStack(s1, s4, s3)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(1, 1, 1, 1)
+        s3.assertCounts(1, 0, 1, 0)
+        s4.assertCounts(1, 0, 0, 0)
+
+        overseer.handleMessage(Start(s2), 1)
+        overseer.assertStack(s1, s4, s2, s3)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(2, 1, 1, 1)
+        s3.assertCounts(1, 0, 1, 0)
+        s4.assertCounts(1, 0, 0, 0)
+
+        overseer.handleMessage(Done, 2)
+        overseer.assertStack(s1, s2, s3)
+        s1.assertCounts(1, 0, 1, 1)
+        s2.assertCounts(2, 1, 1, 1)
+        s3.assertCounts(1, 0, 1, 0)
+        s4.assertCounts(1, 1, 0, 0)
+
+        overseer.handleMessage(Clear(s4), 1)
+        overseer.assertStack(s4)
+        s1.assertCounts(1, 1, 1, 1)
+        s2.assertCounts(2, 2, 1, 1)
+        s3.assertCounts(1, 1, 1, 1)
+        s4.assertCounts(2, 1, 1, 0)
+    }
+
 }

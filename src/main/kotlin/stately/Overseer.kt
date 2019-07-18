@@ -22,17 +22,20 @@ class Overseer() {
     var stack: Stack = newStack()
         private set
 
-    fun handleMessage(message: Any) {
-        stack = stack.headOption()
-            .flatMap { element ->
-                element.chain
-                    .find { state -> state.receive.isDefinedAt(message) }
-                    .map {
-                        log.debug("Applying message to state. message: {}, state: {}", message, element.state)
-                        processNext(stack, it.receive.apply(message), IndexedElement(element, 0))
-                    }
+    fun handleMessage(message: Any, index: Int = 0) {
+        if (index < 0 || index >= stack.size()) {
+            log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size())
+            return
+        }
+
+        val element = stack.get(index)
+        stack = element.chain
+            .find { state -> state.receive.isDefinedAt(message) }
+            .map {
+                log.debug("Applying message to state. message: {}, state: {}", message, element.state)
+                processNext(stack, it.receive.apply(message), IndexedElement(element, index))
             }
-            .getOrElse { stack }
+            .getOrElse(stack)
     }
 
     fun start(state: State) {
@@ -66,8 +69,8 @@ class Overseer() {
 
         val oldFocused: StackElement? = stack.headOption().orNull
         // TODO: Should a state lose and gain focus
-        //  if it is at the top of the stack before and after the transition is processed?
-        if (oldFocused != null && next !is Stay) {
+        //  if it is at the top of the stack before or after the transition is processed?
+        if ((element?.index == 0 || next is Clear) && oldFocused != null && next !is Stay) {
             log.debug("Focus lost for state {}", oldFocused.state)
             oldFocused.state.onFocusLost()
         }
@@ -75,7 +78,9 @@ class Overseer() {
         val newStack = processNextAndApplyStartResult(stack, next, element)
         val newFocused: StackElement? = newStack.headOption().orNull
 
-        return if (next !is Stay || oldFocused?.state !== newFocused?.state) {
+        return if ((element?.index == 0 || element == null || next is Clear)
+            && (next !is Stay || oldFocused?.state !== newFocused?.state)
+        ) {
             if (newFocused != null) {
                 processNext(newStack, newFocused.state.onFocusGained(), IndexedElement(newFocused, 0))
             } else {
