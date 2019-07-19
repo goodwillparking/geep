@@ -301,4 +301,20 @@ class OverseerTest {
         s4.assertCounts(2, 1, 1, 0)
     }
 
+    @Test
+    fun `the publicly accessible stack should be a copy of the overseer's stack`() {
+        val s1 = TestState("1")
+        val s2 = TestState("2")
+        val s3 = TestState("3")
+
+        val overseer = Overseer(s1)
+        overseer.start(s2)
+        overseer.start(s3)
+        overseer.assertStack(s1, s2, s3)
+
+        val stack = overseer.stack() as MutableList
+        stack.add(s1)
+        overseer.assertStack(s1, s2, s3)
+    }
+
 }
