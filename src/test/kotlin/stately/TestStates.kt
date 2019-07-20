@@ -33,15 +33,15 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : Stat
 
     override val receive: Receive = ReceiveBuilder()
         .match { n: Next -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay }
+        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
 
-    override fun onStart(): Next = Stay.also { startCount++ }
+    override fun onStart(): Next = Stay().also { startCount++ }
 
     override fun onEnd() {
         endCount++
     }
 
-    override fun onFocusGained(): Next = Stay.also { focusGainedCount++ }
+    override fun onFocusGained(): Next = Stay().also { focusGainedCount++ }
 
     override fun onFocusLost() {
         focusLostCount++
@@ -73,8 +73,8 @@ class TestParentState(
 
 class TestState(
     id: String,
-    val onStart: Next = Stay,
-    val onFocusGained: Next = Stay,
+    val onStart: Next = Stay(),
+    val onFocusGained: Next = Stay(),
     interceptedType: Class<*> = Any::class.java
 ) : BaseTestState(id, interceptedType) {
 
