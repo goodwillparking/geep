@@ -33,15 +33,15 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : Stat
 
     override val receive: Receive = ReceiveBuilder()
         .match { n: Next -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay }
+        .match({ a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
 
-    override fun onStart(): Next = Stay.also { startCount++ }
+    override fun onStart(): Next = Stay().also { startCount++ }
 
     override fun onEnd() {
         endCount++
     }
 
-    override fun onFocusGained(): Next = Stay.also { focusGainedCount++ }
+    override fun onFocusGained(): Next = Stay().also { focusGainedCount++ }
 
     override fun onFocusLost() {
         focusLostCount++
@@ -73,8 +73,8 @@ class TestParentState(
 
 class TestState(
     id: String,
-    val onStart: Next = Stay,
-    val onFocusGained: Next = Stay,
+    val onStart: Next = Stay(),
+    val onFocusGained: Next = Stay(),
     interceptedType: Class<*> = Any::class.java
 ) : BaseTestState(id, interceptedType) {
 
@@ -93,14 +93,14 @@ class TestState(
 
 open class TestChildState(
     id: String,
-    val onStart: AbsoluteNext = Stay,
-    val onFocusGained: AbsoluteNext = Stay,
+    val onStart: AbsoluteNext = Stay(),
+    val onFocusGained: AbsoluteNext = Stay(),
     interceptedType: Class<*> = Any::class.java
 ) : BaseTestState(id, interceptedType), ChildState {
 
     override val receive: ChildReceive = ChildReceiveBuilder()
         .match{ n: AbsoluteNext -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay }
+        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
 
     override fun toString() = "TestChildState(id='$id', focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
 
@@ -118,14 +118,14 @@ open class TestChildState(
 class TestMiddleState(
     id: String,
     override val childState: TestChildState,
-    onStart: AbsoluteNext = Stay,
-    onFocusGained: AbsoluteNext = Stay,
+    onStart: AbsoluteNext = Stay(),
+    onFocusGained: AbsoluteNext = Stay(),
     interceptedType: Class<*> = Any::class.java
 ) : TestChildState(id, onStart, onFocusGained, interceptedType), ParentState {
 
     override val receive: ChildReceive = ChildReceiveBuilder()
         .match{ n: AbsoluteNext -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay }
+        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
 
     override fun toString() = "TestMiddleState(id='$id', childId='${childState.id}', focusGainedCount=$focusGainedCount, focusLostCount=$focusLostCount, events=$events)"
 }
