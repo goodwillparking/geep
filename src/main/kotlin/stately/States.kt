@@ -21,7 +21,6 @@ interface State {
     fun onEnd() {}
 
     fun onFocusGained(): Next {
-        val n = Stay().cancelTimer("")
         return Stay()
     }
 
@@ -47,17 +46,18 @@ interface ChildState : State {
     }
 }
 
-// TODO: Async modifiers
 sealed class Next {
     protected abstract val asyncUpdate: AsyncUpdate?
 
     protected abstract fun withAsync(asyncUpdate: AsyncUpdate): Next
 
-    fun async(vararg timerUpdate: TimerUpdate): Next {
-        TODO()
+    abstract fun async(vararg timerUpdate: TimerUpdate): Next
+
+    protected inline fun <reified N : Next> asyncTypeSafe(vararg timerUpdate: TimerUpdate): N {
+        return N::class.java.cast(timerUpdate.fold(this) { n, u -> n.timerUpdate(u) })
     }
 
-    private fun timerUpdate(timerUpdate: TimerUpdate): Next {
+    protected fun timerUpdate(timerUpdate: TimerUpdate): Next {
         val asyncUpdate = asyncUpdate
         val pair = timerUpdate.key to timerUpdate
         return withAsync(asyncUpdate?.copy(timerUpdates = asyncUpdate.timerUpdates + pair)
@@ -83,30 +83,38 @@ class Stay private constructor(override val asyncUpdate: AsyncUpdate?) : Absolut
 
     override fun withAsync(asyncUpdate: AsyncUpdate) = Stay(asyncUpdate)
 
-    override fun cancelTimer(key: Any): Stay {
-        return super.cancelTimer(key) as Stay
+    override fun async(vararg timerUpdate: TimerUpdate): Stay {
+        return asyncTypeSafe(*timerUpdate)
     }
 }
 
-data class Goto(val state: State) : RelativeNext() {
-    override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
+data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
+    constructor(state: State) : this(state, null)
+
+    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+
+    override fun async(vararg timerUpdate: TimerUpdate): Goto {
+        return asyncTypeSafe(*timerUpdate)
     }
 }
 
-data class Start(val state: State, val position: RelativePosition = RelativePosition.Above) : RelativeNext() {
-    override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
+data class Start(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
+    constructor(state: State) : this(state, null)
+
+    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+
+    override fun async(vararg timerUpdate: TimerUpdate): Start {
+        return asyncTypeSafe(*timerUpdate)
     }
 }
 
 data class AbsoluteStart(val state: State, val position: AbsolutePosition = AbsolutePosition.Top) : AbsoluteNext() {
+    override fun async(vararg timerUpdate: TimerUpdate): Next {
+        TODO("not implemented")
+    }
+
     override val asyncUpdate: AsyncUpdate?
         get() = TODO("not implemented")
 
@@ -115,26 +123,34 @@ data class AbsoluteStart(val state: State, val position: AbsolutePosition = Abso
     }
 }
 
-object Done : RelativeNext() {
-    override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
+class Done(override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
+    constructor() : this(null)
+
+    override fun withAsync(asyncUpdate: AsyncUpdate) = Done(asyncUpdate)
+
+    override fun async(vararg timerUpdate: TimerUpdate): Done {
+        return asyncTypeSafe(*timerUpdate)
     }
 }
 
 // TODO: nullable state for clear?
-data class Clear(val state: State, val range: RelativeRange = RelativeRange.Below(true)) : RelativeNext() {
-    override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
+data class Clear(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
+    constructor(state: State) : this(state, null)
+
+    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+
+    override fun async(vararg timerUpdate: TimerUpdate): Clear {
+        return asyncTypeSafe(*timerUpdate)
     }
 }
 
 data class AbsoluteClear(val state: State) : AbsoluteNext() {
+    override fun async(vararg timerUpdate: TimerUpdate): Next {
+        TODO("not implemented")
+    }
+
     override val asyncUpdate: AsyncUpdate?
         get() = TODO("not implemented")
 
@@ -160,27 +176,29 @@ sealed class RelativeRange(val inclusive: Boolean) {
 
 data class AsyncUpdate(val timerUpdates: Map<Any, TimerUpdate> = emptyMap())
 
-sealed class Foo
-
-object Bar : Foo()
-
-fun a(foo: Foo) {
-    when(foo) {
-        Bar -> TODO()
-        is CancelTimer -> TODO()
-        is SetSingleTimer -> TODO()
-        is SetPeriodicTimer -> TODO()
-    }
-}
-
-sealed class TimerUpdate : Foo() {
+sealed class TimerUpdate {
     abstract val key: Any
 }
+
 data class CancelTimer(override val key: Any) : TimerUpdate()
-data class SetSingleTimer(override val key: Any, val duration: Duration, val message: Any) : TimerUpdate()
+
+interface SetTimer {
+    val duration: Duration
+    val message: Any
+    val passiveSet: Boolean
+}
+
+data class SetSingleTimer(
+    override val key: Any,
+    override val duration: Duration,
+    override val message: Any,
+    override val passiveSet: Boolean = false
+) : TimerUpdate(), SetTimer
+
 data class SetPeriodicTimer(
     override val key: Any,
-    val period: Duration,
-    val message: Any,
+    override val duration: Duration,
+    override val message: Any,
+    override val passiveSet: Boolean = false,
     val initialDelay: Duration = Duration.ZERO
-) : TimerUpdate()
+) : TimerUpdate(), SetTimer
