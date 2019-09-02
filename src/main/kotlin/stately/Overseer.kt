@@ -2,11 +2,14 @@ package stately
 
 import org.slf4j.LoggerFactory
 import java.util.LinkedList
+import java.util.concurrent.Future
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
-class Overseer() {
+class Overseer(val asyncContext: AsyncContext) {
 
     companion object {
         private val log = LoggerFactory.getLogger(Overseer::class.java)
@@ -20,9 +23,13 @@ class Overseer() {
 
     private var stack: MutableList<StackElement> = emptyList()
 
-    fun stack() = stack.map { it.state }
+    private val lock = ReentrantLock()
 
-    fun handleMessage(message: Any, index: Int = 0) {
+    private val timers: MutableMap<State, MutableMap<Any, Future<*>>> = HashMap()
+
+    fun stack() = lock.withLock { stack.map { it.state } }
+
+    fun handleMessage(message: Any, index: Int = 0) = lock.withLock<Unit> {
         if (index < 0 || index >= stack.size) {
             log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size)
             return
@@ -38,7 +45,7 @@ class Overseer() {
     }
 
     fun start(state: State) {
-        processNext(AbsoluteStart(state), null)
+        lock.withLock { processNext(AbsoluteStart(state), null) }
     }
 
     // TODO: support processing state other than the head?
@@ -198,6 +205,22 @@ class Overseer() {
         stack.clear()
         stack.add(new)
         return IndexedElement(new, 0)
+    }
+
+    fun foo(recipient: State, timerUpdate: TimerUpdate) {
+        when (timerUpdate) {
+            is SetSingleTimer -> {
+                asyncContext.setSingleTimer(timerUpdate) { key, message ->
+                    lock.withLock {
+                        if (timers[recipient]?.containsKey(key) == true) {
+                            if (recipient.receive.isDefinedAt(message)) {
+                                processNext(recipient.receive.apply(message), IndexedElement(element, index))
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

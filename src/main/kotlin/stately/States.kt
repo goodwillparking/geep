@@ -99,9 +99,9 @@ data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : Next
     }
 }
 
-data class Start(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
+data class Start(val state: State, val position: RelativePosition, override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    constructor(state: State) : this(state, null)
+    constructor(state: State, position: RelativePosition = RelativePosition.Above) : this(state, position,null)
 
     override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
 
@@ -135,9 +135,9 @@ class Done(override val asyncUpdate: AsyncUpdate?) : Next() {
 }
 
 // TODO: nullable state for clear?
-data class Clear(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
+data class Clear private constructor(val state: State, val range: RelativeRange, override val asyncUpdate: AsyncUpdate?) : Next() {
 
-    constructor(state: State) : this(state, null)
+    constructor(state: State, range: RelativeRange = RelativeRange.Below(true)) : this(state, range,null)
 
     override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
 
