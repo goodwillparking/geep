@@ -20,6 +20,7 @@ interface State {
 
     fun onEnd() {}
 
+    // TODO: this should take the previously focused state as a param and vice versa.
     fun onFocusGained(): Next {
         return Stay()
     }
@@ -34,6 +35,7 @@ interface ParentState : State {
 
 // TODO: This parent/child naming is a bit counter intuitive if viewed from the perspective of a tree.
 //  FallbackState?
+// TODO: focus handlers don't make sense for child states
 interface ChildState : State {
     override val receive: ChildReceive
 
@@ -47,7 +49,7 @@ interface ChildState : State {
 }
 
 sealed class Next {
-    protected abstract val asyncUpdate: AsyncUpdate?
+    abstract val asyncUpdate: AsyncUpdate?
 
     protected abstract fun withAsync(asyncUpdate: AsyncUpdate): Next
 
@@ -86,9 +88,14 @@ class Stay private constructor(override val asyncUpdate: AsyncUpdate?) : Absolut
     override fun async(vararg timerUpdate: TimerUpdate): Stay {
         return asyncTypeSafe(*timerUpdate)
     }
+
+    override fun setSingleTimer(key: Any, duration: Duration, message: Any): Stay =
+        super.setSingleTimer(key, duration, message) as Stay
+
+    override fun cancelTimer(key: Any): Stay = super.cancelTimer(key) as Stay
 }
 
-data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : Next() {
+data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
 
     constructor(state: State) : this(state, null)
 
@@ -99,7 +106,7 @@ data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : Next
     }
 }
 
-data class Start(val state: State, val position: RelativePosition, override val asyncUpdate: AsyncUpdate?) : Next() {
+data class Start(val state: State, val position: RelativePosition, override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
 
     constructor(state: State, position: RelativePosition = RelativePosition.Above) : this(state, position,null)
 
@@ -123,7 +130,7 @@ data class AbsoluteStart(val state: State, val position: AbsolutePosition = Abso
     }
 }
 
-class Done(override val asyncUpdate: AsyncUpdate?) : Next() {
+class Done(override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
 
     constructor() : this(null)
 
@@ -135,7 +142,11 @@ class Done(override val asyncUpdate: AsyncUpdate?) : Next() {
 }
 
 // TODO: nullable state for clear?
-data class Clear private constructor(val state: State, val range: RelativeRange, override val asyncUpdate: AsyncUpdate?) : Next() {
+data class Clear private constructor(
+    val state: State,
+    val range: RelativeRange,
+    override val asyncUpdate: AsyncUpdate?
+) : RelativeNext() {
 
     constructor(state: State, range: RelativeRange = RelativeRange.Below(true)) : this(state, range,null)
 
@@ -182,6 +193,7 @@ sealed class TimerUpdate {
 
 data class CancelTimer(override val key: Any) : TimerUpdate()
 
+// TODO: Global vs local timers
 interface SetTimer {
     val duration: Duration
     val message: Any

@@ -1,6 +1,7 @@
 package stately
 
 import org.slf4j.LoggerFactory
+import java.util.IdentityHashMap
 import java.util.LinkedList
 import java.util.concurrent.Future
 import java.util.concurrent.locks.ReentrantLock
@@ -9,7 +10,7 @@ import kotlin.concurrent.withLock
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
-class Overseer(val asyncContext: AsyncContext) {
+class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     companion object {
         private val log = LoggerFactory.getLogger(Overseer::class.java)
@@ -25,7 +26,9 @@ class Overseer(val asyncContext: AsyncContext) {
 
     private val lock = ReentrantLock()
 
-    private val timers: MutableMap<State, MutableMap<Any, Future<*>>> = HashMap()
+    // Client States may not use referential equality,
+    // so use a IdentityHashMap to make sure we don't lose track of what state have async tasks.
+    private val timers: MutableMap<State, MutableMap<Any, Future<*>>> = IdentityHashMap()
 
     fun stack() = lock.withLock { stack.map { it.state } }
 
@@ -36,20 +39,38 @@ class Overseer(val asyncContext: AsyncContext) {
         }
 
         val element = stack[index]
-        element.chain
-            .find { state -> state.receive.isDefinedAt(message) }
-            ?.also {
-                log.debug("Applying message to state. message: {}, state: {}", message, element.state)
-                processNext(it.receive.apply(message), IndexedElement(element, index))
-            }
+        checkAndHandle(message, IndexedElement(element, index))
     }
+
+    private fun checkAndHandle(message: Any, indexed: IndexedElement) {
+        indexed.element.chain
+            .find { state -> state.receive.isDefinedAt(message) }
+            ?.also { state -> applyMessage(message, Recipient(state, indexed)) }
+            ?: kotlin.run { logUnhandled(message, indexed.element.state) }
+    }
+
+    private fun checkAndHandle(message: Any, recipient: Recipient) {
+        if (recipient.state.receive.isDefinedAt(message)) {
+            applyMessage(message, recipient)
+        } else {
+            logUnhandled(message, recipient.state)
+        }
+    }
+
+    private fun applyMessage(message: Any, recipient: Recipient) {
+        log.debug("Applying message to state. message: {}, state: {}", message, recipient.indexed.element.state)
+        processNext(recipient.state.receive.apply(message), recipient)
+    }
+
+    private fun logUnhandled(message: Any, state: State) =
+        log.debug("Message unhandled. message: {}, state: {}", message, state)
 
     fun start(state: State) {
         lock.withLock { processNext(AbsoluteStart(state), null) }
     }
 
     // TODO: support processing state other than the head?
-    private tailrec fun processNext(next: Next, element: IndexedElement? = null) {
+    private tailrec fun processNext(next: Next, recipient: Recipient? = null) {
 
         val oldFocused: StackElement? = stack.firstOrNull()
         var focusedChanged = false
@@ -89,19 +110,19 @@ class Overseer(val asyncContext: AsyncContext) {
             }
         }
 
-        log.debug("Processing Next for State. next: {}, state {}", next, element?.element?.state)
-        processNextAndApplyStartResult(next, element)
+        log.debug("Processing Next for State. next: {}, state {}", next, recipient?.indexed?.element?.state)
+        processNextAndApplyStartResult(next, recipient?.indexed)
 
         val newFocused: StackElement? = stack.firstOrNull()
 
-        if (focusedChanged || (oldFocused?.state === element?.element?.state && next is Goto)) {
+        if (focusedChanged || (oldFocused?.state === recipient?.indexed?.element?.state && next is Goto)) {
             if (oldFocused != null) {
                 log.debug("Focus lost for state {}", oldFocused.state)
                 oldFocused.state.onFocusLost()
             }
             if (newFocused != null) {
                 log.debug("Focus gained for state {}", newFocused.state)
-                processNext(newFocused.state.onFocusGained(), IndexedElement(newFocused, 0))
+                processNext(newFocused.state.onFocusGained(), Recipient(newFocused.state, IndexedElement(newFocused, 0)))
             }
         }
     }
@@ -207,24 +228,102 @@ class Overseer(val asyncContext: AsyncContext) {
         return IndexedElement(new, 0)
     }
 
-    fun foo(recipient: State, timerUpdate: TimerUpdate) {
-        when (timerUpdate) {
-            is SetSingleTimer -> {
-                asyncContext.setSingleTimer(timerUpdate) { key, message ->
-                    lock.withLock {
-                        if (timers[recipient]?.containsKey(key) == true) {
-                            if (recipient.receive.isDefinedAt(message)) {
-                                processNext(recipient.receive.apply(message), IndexedElement(element, index))
-                            }
-                        }
-                    }
+    private fun updateAsync(next: Next, element: StackElement) {
+        val updates = next.asyncUpdate ?: return
+        when (next) {
+            is Start,
+            is Stay -> {
+                updates.timerUpdates.forEach { (_, update) ->
+                    updateTimer(element, update)
                 }
             }
         }
     }
+
+    private fun updateAsync(next: Next, recipient: Recipient) {
+        val updates = next.asyncUpdate ?: return
+        when (next) {
+            // TODO: Have interface for async state updates
+            is Start,
+            is Stay -> {
+                updates.timerUpdates.forEach { (_, update) ->
+                    updateTimer(recipient, update)
+                }
+            }
+        }
+    }
+
+    // TODO: Recipient should be StackElement or IndexStackElement
+    private fun updateTimer(recipient: Recipient, timerUpdate: TimerUpdate) {
+        if (timerUpdate is SetTimer
+            && timerUpdate.passiveSet
+            && timers[recipient.state]?.containsKey(timerUpdate.key) == true
+        ) {
+            return
+        }
+
+        // The timer will always be canceled either because this is a CancelTimer
+        // or because we are resetting an existing timer.
+        cancelTimer(recipient, timerUpdate.key)
+
+        val future = when (timerUpdate) {
+            is SetSingleTimer -> {
+                asyncContext.setSingleTimer(timerUpdate) { key, message ->
+                    lock.withLock { executeTimer(recipient, key, message, false) }
+                }
+            }
+            is SetPeriodicTimer -> {
+                asyncContext.setPeriodicTimer(timerUpdate) { key, message ->
+                    lock.withLock { executeTimer(recipient, key, message, true) }
+                }
+            }
+            is CancelTimer -> null
+        }
+
+        future?.also { timers.computeIfAbsent(recipient.state) { HashMap() }[timerUpdate.key] = it }
+    }
+
+    private fun executeTimer(recipient: Recipient, key: Any, message: Any, isPeriodic: Boolean) {
+        val timerMap = timers[recipient.state]
+        // Make sure the timer hasn't been canceled and that the future has not been canceled
+        if (timerMap?.containsKey(key) == true && !Thread.currentThread().isInterrupted) {
+            // The stack may have changed since the timer was scheduled,
+            // so search the stack for the recipient of the message.
+            val newRecipient = stack.asSequence().withIndex()
+                .map { (index, stackElement) ->
+                    when {
+                        // Check the StackElement instead of its state
+                        // in case the client put the same state on the stack in multiple positions.
+                        stackElement === recipient.indexed.element -> stackElement.state
+                        else -> stackElement.chain.withIndex()
+                            // skip index 0 as that was checked above via the StackElement
+                            .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
+                    }?.let { Recipient(it, IndexedElement(stackElement, index)) }
+                }
+                .firstOrNull { it != null }
+            if (newRecipient == null) { // This should never happen.
+                log.error(
+                    "State has timer scheduled but is not on the stack! state: {}, timer key: {}, message: {}",
+                    recipient,
+                    key,
+                    message)
+            } else {
+                checkAndHandle(message, newRecipient)
+            }
+            if (!isPeriodic) timerMap.remove(key)
+        }
+    }
+
+    private fun cancelTimer(recipient: Recipient, key: Any) {
+        val timerMap = timers[recipient.state]
+        if (timerMap != null) {
+            timerMap[key]?.cancel(true)
+            timerMap.remove(key)
+        }
+    }
 }
 
-private data class StackElement(val state: State) {
+private class StackElement(val state: State) {
     // TODO: need to be lazy?
     val chain: List<State> by lazy {
         var s = state
@@ -236,6 +335,12 @@ private data class StackElement(val state: State) {
         }
         acc
     }
+
+    override fun toString() = "StackElement(state=$state)"
 }
 
 private data class IndexedElement(val element: StackElement, val index: Int)
+
+private data class Recipient(val state: State, val indexed: IndexedElement)
+
+private data class AsyncContainer<S : State>(val state: S)
