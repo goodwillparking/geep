@@ -75,7 +75,7 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
         val oldFocused: StackElement? = stack.firstOrNull()
         var focusedChanged = false
 
-        tailrec fun processNextAndApplyStartResult(next: Next, element: IndexedElement?) {
+        tailrec fun processNextAndApplyStartResult(next: Next, recipient: Recipient?) {
 
             fun handleAbsolute(absoluteNext: AbsoluteNext): IndexedElement? = when (absoluteNext) {
                 is Stay -> null
@@ -83,20 +83,22 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
                 is AbsoluteClear -> absoluteClear(absoluteNext)
             }
 
-            val newElement: IndexedElement? = if (element == null) {
+            val newElement: IndexedElement? = if (recipient == null) {
                 if (next is AbsoluteNext) {
                     handleAbsolute(next)
                 } else {
                     // Should never happen.
-                    log.error("StackElement is null but does not use AbsoluteNext, ignoring it. next: {}", next)
+                    log.error("Recipient is null but does not use AbsoluteNext, ignoring it. next: {}", next)
                     null
                 }
             } else {
+                updateAsync(next, recipient)
+                val indexed = recipient.indexed
                 when (next) {
-                    is Goto -> goto(next, element)
-                    is Start -> start(next, element)
-                    is Done -> { done(element); null }
-                    is Clear -> clear(next, element)
+                    is Goto -> goto(next, indexed)
+                    is Start -> start(next, indexed)
+                    is Done -> { done(indexed); null }
+                    is Clear -> clear(next, indexed)
                     is AbsoluteNext -> handleAbsolute(next)
                 }
             }
@@ -106,12 +108,15 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
             }
 
             if (newElement != null) {
-                processNextAndApplyStartResult(newElement.element.state.onStart(), newElement)
+                processNextAndApplyStartResult(
+                    newElement.element.state.onStart(),
+                    Recipient(newElement.element.state, newElement)
+                )
             }
         }
 
         log.debug("Processing Next for State. next: {}, state {}", next, recipient?.indexed?.element?.state)
-        processNextAndApplyStartResult(next, recipient?.indexed)
+        processNextAndApplyStartResult(next, recipient)
 
         val newFocused: StackElement? = stack.firstOrNull()
 
@@ -228,23 +233,13 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
         return IndexedElement(new, 0)
     }
 
-    private fun updateAsync(next: Next, element: StackElement) {
-        val updates = next.asyncUpdate ?: return
-        when (next) {
-            is Start,
-            is Stay -> {
-                updates.timerUpdates.forEach { (_, update) ->
-                    updateTimer(element, update)
-                }
-            }
-        }
-    }
-
     private fun updateAsync(next: Next, recipient: Recipient) {
         val updates = next.asyncUpdate ?: return
         when (next) {
             // TODO: Have interface for async state updates
             is Start,
+            is AbsoluteStart,
+            // TODO: Clear if not inclusive
             is Stay -> {
                 updates.timerUpdates.forEach { (_, update) ->
                     updateTimer(recipient, update)
@@ -342,5 +337,3 @@ private class StackElement(val state: State) {
 private data class IndexedElement(val element: StackElement, val index: Int)
 
 private data class Recipient(val state: State, val indexed: IndexedElement)
-
-private data class AsyncContainer<S : State>(val state: S)

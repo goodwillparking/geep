@@ -95,6 +95,7 @@ class Stay private constructor(override val asyncUpdate: AsyncUpdate?) : Absolut
     override fun cancelTimer(key: Any): Stay = super.cancelTimer(key) as Stay
 }
 
+// TODO: private constructors an no data classes
 data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
 
     constructor(state: State) : this(state, null)
@@ -117,17 +118,19 @@ data class Start(val state: State, val position: RelativePosition, override val 
     }
 }
 
-data class AbsoluteStart(val state: State, val position: AbsolutePosition = AbsolutePosition.Top) : AbsoluteNext() {
-    override fun async(vararg timerUpdate: TimerUpdate): Next {
-        TODO("not implemented")
-    }
-
+data class AbsoluteStart(
+    val state: State,
+    val position: AbsolutePosition,
     override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
+) : AbsoluteNext() {
 
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
+    constructor(state: State, position: AbsolutePosition = AbsolutePosition.Top) : this(state, position, null)
+
+    override fun async(vararg timerUpdate: TimerUpdate): AbsoluteStart {
+        return asyncTypeSafe(*timerUpdate)
     }
+
+    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
 }
 
 class Done(override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
@@ -157,17 +160,15 @@ data class Clear private constructor(
     }
 }
 
-data class AbsoluteClear(val state: State) : AbsoluteNext() {
-    override fun async(vararg timerUpdate: TimerUpdate): Next {
-        TODO("not implemented")
+data class AbsoluteClear(val state: State, override val asyncUpdate: AsyncUpdate?) : AbsoluteNext() {
+
+    constructor(state: State) : this(state, null)
+
+    override fun async(vararg timerUpdate: TimerUpdate): AbsoluteStart {
+        return asyncTypeSafe(*timerUpdate)
     }
 
-    override val asyncUpdate: AsyncUpdate?
-        get() = TODO("not implemented")
-
-    override fun withAsync(asyncUpdate: AsyncUpdate): Next {
-        TODO("not implemented")
-    }
+    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
 }
 
 sealed class AbsolutePosition {
