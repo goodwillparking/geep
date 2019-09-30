@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import org.junit.Assert
 
@@ -121,7 +121,8 @@ class TestMiddleState(
     onStart: AbsoluteNext = Stay(),
     onFocusGained: AbsoluteNext = Stay(),
     interceptedType: Class<*> = Any::class.java
-) : TestChildState(id, onStart, onFocusGained, interceptedType), ParentState {
+) : TestChildState(id, onStart, onFocusGained, interceptedType),
+    ParentState {
 
     override val receive: ChildReceive = ChildReceiveBuilder()
         .match{ n: AbsoluteNext -> n }

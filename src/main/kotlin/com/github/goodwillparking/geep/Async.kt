@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import java.util.concurrent.Executors
 import java.util.concurrent.Future

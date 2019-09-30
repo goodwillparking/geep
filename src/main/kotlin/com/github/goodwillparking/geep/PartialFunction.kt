@@ -1,10 +1,11 @@
-package stately
+package com.github.goodwillparking.geep
 
 interface PartialFunction<T, R> {
 
     companion object {
 
-        fun <T, R> empty(): PartialFunction<T, R> = object : PartialFunction<T, R> {
+        fun <T, R> empty(): PartialFunction<T, R> = object :
+            PartialFunction<T, R> {
             override fun apply(t: T) = throw IllegalStateException("Function not defined at $t")
             override fun isDefinedAt(value: T) = false
         }
@@ -27,7 +28,12 @@ interface PartialFunction<T, R> {
 inline fun <T, R, reified C : T> PartialFunction<T, R>.match(
     crossinline predicate: (C) -> Boolean = { true },
     crossinline apply: (C) -> R
-): PartialFunction<T, R> = orElse(PFBuilder.match(predicate, apply))
+): PartialFunction<T, R> = orElse(
+    PFBuilder.match(
+        predicate,
+        apply
+    )
+)
 
 class PFBuilder<T, R> {
 
@@ -45,5 +51,6 @@ class PFBuilder<T, R> {
     inline fun <reified C : T> match(
         crossinline predicate: (C) -> Boolean = { true },
         crossinline apply: (C) -> R
-    ): PartialFunction<T, R> = PFBuilder.match(predicate, apply)
+    ): PartialFunction<T, R> =
+        Companion.match(predicate, apply)
 }

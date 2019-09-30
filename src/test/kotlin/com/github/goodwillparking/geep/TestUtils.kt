@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
@@ -30,6 +30,7 @@ inline fun <reified E : Exception> expectException(runnable: () -> Unit) {
     }
 }
 
+@Suppress("UNCHECKED_CAST")
 fun <T> anyObject(): T {
     Mockito.anyObject<T>()
     return null as T

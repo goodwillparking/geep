@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import org.junit.Assert
 import java.util.NoSuchElementException
@@ -52,7 +52,10 @@ class TestFuture<V> private constructor(
 
     private val lock = ReentrantLock()
 
-    constructor( supplier: () -> V) : this(supplier, Status.PENDING, Option.None())
+    constructor( supplier: () -> V) : this(supplier,
+        Status.PENDING,
+        Option.None()
+    )
 
     override fun isDone() = lock.withLock { status != Status.PENDING }
 

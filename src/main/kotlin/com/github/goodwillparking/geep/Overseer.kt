@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import org.slf4j.LoggerFactory
 import java.lang.Exception
@@ -129,7 +129,12 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
             }
             if (newFocused != null) {
                 log.debug("Focus gained for state {}", newFocused.state)
-                processNext(newFocused.state.onFocusGained(), Recipient(newFocused.state, IndexedElement(newFocused, 0)))
+                processNext(newFocused.state.onFocusGained(),
+                    Recipient(
+                        newFocused.state,
+                        IndexedElement(newFocused, 0)
+                    )
+                )
             }
         }
     }
@@ -300,7 +305,12 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
                         else -> stackElement.chain.withIndex()
                             // skip index 0 as that was checked above via the StackElement
                             .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
-                    }?.let { Recipient(it, IndexedElement(stackElement, index)) }
+                    }?.let {
+                        Recipient(
+                            it,
+                            IndexedElement(stackElement, index)
+                        )
+                    }
                 }
                 .firstOrNull { it != null }
             if (newRecipient == null) { // This should never happen.

@@ -1,9 +1,10 @@
-package stately
+package com.github.goodwillparking.geep
 
 import org.junit.Test
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
+import java.lang.Double
 import java.util.Locale
 
 class OverseerTest {
@@ -61,8 +62,10 @@ class OverseerTest {
     @Test
     fun `states should be able to modify the stack when they gain focus`() {
         val s1 = TestState("1")
-        val s2 = TestState("2", onFocusGained = Goto(s1))
-        val s3 = TestState("3", onFocusGained = Start(s2))
+        val s2 =
+            TestState("2", onFocusGained = Goto(s1))
+        val s3 =
+            TestState("3", onFocusGained = Start(s2))
 
         val overseer = Overseer(s3)
         overseer.assertStack(s3, s1)
@@ -85,8 +88,10 @@ class OverseerTest {
         s3.assertCounts(1, 0, 1, 1)
         s4.assertCounts(1, 1, 1, 1)
 
-        val s5 = TestState("5", onFocusGained = Start(s3))
-        val s6 = TestState("6", onFocusGained = Clear(s5))
+        val s5 =
+            TestState("5", onFocusGained = Start(s3))
+        val s6 =
+            TestState("6", onFocusGained = Clear(s5))
 
         overseer.handleMessage(Goto(s6))
         overseer.assertStack(s5, s3, s1)
@@ -101,8 +106,9 @@ class OverseerTest {
     @Test
     fun `child states should be able to handle messages that weren't handled by their parents`() {
         val s1 = TestChildState("1", interceptedType = String::class.java)
-        val s2 = TestMiddleState("2", interceptedType = Integer::class.java, childState = s1)
-        val s3 = TestParentState("3", java.lang.Double::class.java, s2)
+        val s2 =
+            TestMiddleState("2", interceptedType = Integer::class.java, childState = s1)
+        val s3 = TestParentState("3", Double::class.java, s2)
 
         val overseer = Overseer(s3)
         s1.assertCounts(0, 0, 0, 0)
@@ -331,35 +337,58 @@ class OverseerTest {
         s3.assertCounts(1, 0, 1, 0)
 
         val s4 = TestState("4")
-        overseer.handleMessage(Clear(s4, RelativeRange.Below(false)))
+        overseer.handleMessage(
+            Clear(
+                s4,
+                RelativeRange.Below(false)
+            )
+        )
         overseer.assertStack(s4, s3)
         s1.assertCounts(1, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(AbsoluteStart(s1, AbsolutePosition.Bottom))
+        overseer.handleMessage(
+            AbsoluteStart(
+                s1,
+                AbsolutePosition.Bottom
+            )
+        )
         overseer.assertStack(s1, s4, s3)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(Clear(s2, RelativeRange.Above(false)), 2)
+        overseer.handleMessage(
+            Clear(
+                s2,
+                RelativeRange.Above(false)
+            ), 2)
         overseer.assertStack(s1, s2)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 1)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(1, 1, 0, 0)
 
-        overseer.handleMessage(AbsoluteStart(s4, AbsolutePosition.Top), 1)
+        overseer.handleMessage(
+            AbsoluteStart(
+                s4,
+                AbsolutePosition.Top
+            ), 1)
         overseer.assertStack(s1, s2, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        overseer.handleMessage(Start(s3, RelativePosition.Below))
+        overseer.handleMessage(
+            Start(
+                s3,
+                RelativePosition.Below
+            )
+        )
         overseer.assertStack(s1, s2, s3, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
@@ -367,28 +396,46 @@ class OverseerTest {
         s4.assertCounts(2, 1, 1, 0)
 
         val s5 = TestState("5")
-        overseer.handleMessage(Clear(s5, RelativeRange.Below(true)), 1)
+        overseer.handleMessage(
+            Clear(
+                s5,
+                RelativeRange.Below(true)
+            ), 1)
         overseer.assertStack(s5, s4)
         s1.assertCounts(2, 2, 1, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        overseer.handleMessage(Clear(s1, RelativeRange.Above(true)))
+        overseer.handleMessage(
+            Clear(
+                s1,
+                RelativeRange.Above(true)
+            )
+        )
         overseer.assertStack(s5, s1)
         s1.assertCounts(3, 2, 2, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        overseer.handleMessage(Clear(s2, RelativeRange.Above(false)))
+        overseer.handleMessage(
+            Clear(
+                s2,
+                RelativeRange.Above(false)
+            )
+        )
         overseer.assertStack(s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        overseer.handleMessage(Clear(s3, RelativeRange.Below(false)), 2)
+        overseer.handleMessage(
+            Clear(
+                s3,
+                RelativeRange.Below(false)
+            ), 2)
         overseer.assertStack(s3, s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)

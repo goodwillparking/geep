@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 import java.time.Duration
 
@@ -63,7 +63,8 @@ sealed class Next {
         val asyncUpdate = asyncUpdate
         val pair = timerUpdate.key to timerUpdate
         return withAsync(asyncUpdate?.copy(timerUpdates = asyncUpdate.timerUpdates + pair)
-            ?: AsyncUpdate(mapOf(pair)))
+            ?: AsyncUpdate(mapOf(pair))
+        )
     }
 
     open fun setSingleTimer(key: Any, duration: Duration, message: Any): Next {
@@ -83,7 +84,8 @@ class Stay private constructor(override val asyncUpdate: AsyncUpdate?) : Absolut
 
     constructor() : this(null)
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) = Stay(asyncUpdate)
+    override fun withAsync(asyncUpdate: AsyncUpdate) =
+        Stay(asyncUpdate)
 
     override fun async(vararg timerUpdate: TimerUpdate): Stay {
         return asyncTypeSafe(*timerUpdate)
@@ -137,7 +139,8 @@ class Done(override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
 
     constructor() : this(null)
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) = Done(asyncUpdate)
+    override fun withAsync(asyncUpdate: AsyncUpdate) =
+        Done(asyncUpdate)
 
     override fun async(vararg timerUpdate: TimerUpdate): Done {
         return asyncTypeSafe(*timerUpdate)
@@ -151,7 +154,10 @@ data class Clear private constructor(
     override val asyncUpdate: AsyncUpdate?
 ) : RelativeNext() {
 
-    constructor(state: State, range: RelativeRange = RelativeRange.Below(true)) : this(state, range,null)
+    constructor(state: State, range: RelativeRange = RelativeRange.Below(
+        true
+    )
+    ) : this(state, range,null)
 
     override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
 

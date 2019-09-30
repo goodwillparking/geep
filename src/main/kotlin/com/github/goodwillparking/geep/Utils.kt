@@ -1,4 +1,4 @@
-package stately
+package com.github.goodwillparking.geep
 
 internal inline fun <T> Iterable<T>.exists(predicate: (T) -> Boolean): Boolean {
     for (element in this) {
