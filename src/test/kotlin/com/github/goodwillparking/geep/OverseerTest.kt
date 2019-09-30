@@ -4,7 +4,6 @@ import org.junit.Test
 import org.mockito.Mockito.`when`
 import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
-import java.lang.Double
 import java.util.Locale
 
 class OverseerTest {
@@ -108,7 +107,7 @@ class OverseerTest {
         val s1 = TestChildState("1", interceptedType = String::class.java)
         val s2 =
             TestMiddleState("2", interceptedType = Integer::class.java, childState = s1)
-        val s3 = TestParentState("3", Double::class.java, s2)
+        val s3 = TestParentState("3", Double::class.javaObjectType, s2)
 
         val overseer = Overseer(s3)
         s1.assertCounts(0, 0, 0, 0)
