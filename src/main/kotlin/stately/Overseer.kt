@@ -16,7 +16,7 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
         private val log = LoggerFactory.getLogger(Overseer::class.java)
     }
 
-    constructor(initialState: State) : this() {
+    constructor(initialState: State, asyncContext: AsyncContext = JavaAsyncContext()) : this(asyncContext) {
         start(initialState)
     }
 

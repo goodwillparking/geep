@@ -13,7 +13,7 @@ interface AsyncContext {
 }
 
 class JavaAsyncContext(
-    private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor()
+    private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(32)
 ) : AsyncContext {
 
     override fun setSingleTimer(timer: SetSingleTimer, messageHandler: (key: Any, message: Any) -> Unit): Future<*> {

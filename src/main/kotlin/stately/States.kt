@@ -196,6 +196,7 @@ data class CancelTimer(override val key: Any) : TimerUpdate()
 
 // TODO: Global vs local timers
 interface SetTimer {
+    val key: Any
     val duration: Duration
     val message: Any
     val passiveSet: Boolean
