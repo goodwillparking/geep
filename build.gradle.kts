@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     kotlin("jvm") version "1.3.20"
+    jacoco
 }
 
 group = "goodwillparking"
@@ -29,4 +30,8 @@ configure<JavaPluginConvention> {
 
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+tasks.named<Task>("test") {
+    finalizedBy("jacocoTestReport")
 }
