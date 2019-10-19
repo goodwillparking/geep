@@ -1,7 +1,6 @@
 package com.github.goodwillparking.geep
 
 import org.slf4j.LoggerFactory
-import java.lang.Exception
 import java.util.IdentityHashMap
 import java.util.LinkedList
 import java.util.concurrent.Future
@@ -11,6 +10,9 @@ import kotlin.concurrent.withLock
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
+// TODO: Allow states to call back into the overseer to handle messages.
+//  This is currently possible, but could cause unexpected results.
+//  Messages probably need to be queued.
 class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     companion object {
@@ -29,8 +31,10 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     // Client States may not use referential equality,
     // so use a IdentityHashMap to make sure we don't lose track of what states have async tasks.
-    // TODO: Timers should get canceled when their states fall off the stack.
+    // TODO: async tasks should get canceled when their states fall off the stack.
+    //  Track the StackElements as they are unique, whereas the States may be reused by the client
     private val timers: MutableMap<State, MutableMap<Any, Future<*>>> = IdentityHashMap()
+    private val asyncExecutions: MutableMap<State, MutableSet<Future<Unit>>> = IdentityHashMap()
 
     fun stack() = lock.withLock { stack.map { it.state } }
 
@@ -111,6 +115,7 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
             if (newElement != null) {
                 processNextAndApplyStartResult(
+                    // TODO: Maybe onStart/End should only trigger when states enter or leave the stack
                     newElement.element.state.onStart(),
                     Recipient(newElement.element.state, newElement)
                 )
@@ -244,13 +249,11 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
         val updates = if (next is AsyncNext) next.asyncUpdate else null
         // TODO: test inclusive clear case
         if (updates != null && !(next is Clear && next.range.inclusive)) {
-            updates.timerUpdates.forEach { (_, update) ->
-                updateTimer(recipient, update)
-            }
+            updates.timerUpdates.forEach { (_, update) -> updateTimer(recipient, update) }
+            updates.asyncExecutions.forEach { runAsync(recipient, it) }
         }
     }
 
-    // TODO: Recipient should be StackElement or IndexStackElement
     private fun updateTimer(recipient: Recipient, timerUpdate: TimerUpdate) {
         if (timerUpdate is SetTimer
             && timerUpdate.passiveSet
@@ -267,7 +270,7 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
             when (timerUpdate) {
                 is SetSingleTimer -> {
                     asyncContext.setSingleTimer(timerUpdate) { key, message ->
-                        lock.withLock { lock.isHeldByCurrentThread;executeTimer(recipient, key, message, false) }
+                        lock.withLock { executeTimer(recipient, key, message, false) }
                     }
                 }
                 is SetPeriodicTimer -> {
@@ -275,40 +278,29 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
                         lock.withLock { executeTimer(recipient, key, message, true) }
                     }
                 }
-                is CancelTimer -> null
+                is CancelTimer -> {
+                    log.debug("Canceled timer {} for state {}", timerUpdate.key, recipient.state)
+                    null
+                }
             }
         } catch (e: Exception) {
             log.error("Failed to process TimerUpdate {}", timerUpdate, e)
             null
         }
 
-        future?.also { timers.computeIfAbsent(recipient.state) { HashMap() }[timerUpdate.key] = it }
+        future?.also {
+            log.debug("Set timer {} for state: {}", timerUpdate, recipient.state)
+            timers.computeIfAbsent(recipient.state) { HashMap() }[timerUpdate.key] = it
+        }
     }
 
     private fun executeTimer(recipient: Recipient, key: Any, message: Any, isPeriodic: Boolean) {
         val timerMap = timers[recipient.state]
         // Make sure the timer hasn't been canceled and that the future has not been canceled
         if (timerMap?.containsKey(key) == true && !Thread.currentThread().isInterrupted) {
-            // The stack may have changed since the timer was scheduled,
-            // so search the stack for the recipient of the message.
-            val newRecipient = stack.asSequence().withIndex()
-                .map { (index, stackElement) ->
-                    when {
-                        // Check the StackElement instead of its state
-                        // in case the client put the same state on the stack in multiple positions.
-                        stackElement === recipient.indexed.element -> stackElement.state
-                        else -> stackElement.chain.withIndex()
-                            // skip index 0 as that was checked above via the StackElement
-                            .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
-                    }?.let {
-                        Recipient(
-                            it,
-                            IndexedElement(stackElement, index)
-                        )
-                    }
-                }
-                .firstOrNull { it != null }
-            if (newRecipient == null) { // This should never happen.
+            val newRecipient = findCurrentRecipient(recipient)
+            // This should never happen. The timer should've been canceled if the state is no longer on the stack
+            if (newRecipient == null) {
                 log.error(
                     "State has timer scheduled but is not on the stack! state: {}, timer key: {}, message: {}",
                     recipient,
@@ -327,6 +319,68 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
             timerMap[key]?.cancel(true)
             timerMap.remove(key)
         }
+    }
+
+    private fun runAsync(recipient: Recipient, executeAsync: ExecuteAsync) {
+        // TODO: provide some way to cancel the execution, maybe name the execution like with timers
+        try {
+            val future = asyncContext.runAsync {
+                val result = try {
+                    executeAsync.task()
+                } catch (e: Exception) {
+                    try {
+                        executeAsync.failureMapper(e)
+                    } catch (e2: Exception) {
+                        log.error(
+                            "Failed to map async execution failure. execution: {}, state: {}, originalFailure: {}",
+                            executeAsync,
+                            recipient.state,
+                            e,
+                            e2
+                        )
+                        Failure(e)
+                    }
+                }
+                handleAsyncResult(recipient, result)
+            }
+            asyncExecutions.computeIfAbsent(recipient.state) { HashSet() }.add(future)
+        } catch (e: Exception) {
+            log.error("Failed to process ExecuteAsync {}", executeAsync, e)
+        }
+    }
+
+    private fun handleAsyncResult(recipient: Recipient, message: Any) {
+        if (asyncExecutions.containsKey(recipient.state) && !Thread.currentThread().isInterrupted) {
+            val newRecipient = findCurrentRecipient(recipient)
+            if (newRecipient == null) {
+                log.error(
+                    "State has async execution running but is not on the stack! state: {}, executionResult: {}",
+                    recipient,
+                    message
+                )
+            } else if (message !is Unit) {
+                checkAndHandle(message, newRecipient)
+            }
+        }
+    }
+
+    private fun findCurrentRecipient(recipient: Recipient): Recipient? {
+        // The stack may have changed since the async task was scheduled,
+        // so search the stack for the recipient of the message.
+        return stack.asSequence().withIndex()
+            .map { (index, stackElement) ->
+                when {
+                    // Check the StackElement instead of its state
+                    // in case the client put the same state on the stack in multiple positions.
+                    stackElement === recipient.indexed.element -> stackElement.state
+                    else -> stackElement.chain.withIndex()
+                        // skip index 0 as that was checked above via the StackElement
+                        .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
+                }?.let {
+                    Recipient(it, IndexedElement(stackElement, index))
+                }
+            }
+            .firstOrNull { it != null }
     }
 }
 

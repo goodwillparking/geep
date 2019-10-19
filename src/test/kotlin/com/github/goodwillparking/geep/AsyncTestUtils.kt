@@ -12,11 +12,19 @@ class TestAsyncContext : AsyncContext {
 
     private val timers = mutableMapOf<Any, ScheduledTimer>()
 
+    private val asyncExecutions = mutableListOf<Future<Unit>>()
+
     override fun setSingleTimer(timer: SetSingleTimer, messageHandler: (key: Any, message: Any) -> Unit) =
         setTimer(timer, messageHandler, false)
 
     override fun setPeriodicTimer(timer: SetPeriodicTimer, messageHandler: (key: Any, message: Any) -> Unit) =
         setTimer(timer, messageHandler, true)
+
+    override fun runAsync(asyncTask: () -> Unit): Future<Unit> {
+        val future = TestFuture { asyncTask() }
+        asyncExecutions.add(future)
+        return future
+    }
 
     fun fireTimer(key: Any) {
         timers.filterValues { !it.future.isDone }
@@ -29,6 +37,12 @@ class TestAsyncContext : AsyncContext {
                 }
             }
             ?: Assert.fail("Timer $key is not scheduled. It may have already been completed or canceled.")
+    }
+
+    fun fireAsync(index: Int = 0) {
+        asyncExecutions.getOrNull(index)?.get()
+            ?: throw AssertionError("There are no pending async executions at index $index.")
+        asyncExecutions.removeAt(index)
     }
 
     private fun setTimer(
@@ -107,4 +121,17 @@ class TestFuture<V> private constructor(
             override fun get(): V = throw NoSuchElementException("No value present")
         }
     }
+}
+
+class AsyncTestHarness() {
+    val async = TestAsyncContext()
+    val s1 = TestState("1")
+    val overseer = Overseer(s1, async)
+
+    init {
+        overseer.assertStack(s1)
+        s1.assertCounts(1, 0, 1, 0)
+    }
+
+    fun run(test: AsyncTestHarness.() -> Unit) = test()
 }

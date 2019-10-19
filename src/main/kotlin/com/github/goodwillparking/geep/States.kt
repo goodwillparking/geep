@@ -59,17 +59,18 @@ interface AsyncNext {
 
     fun withAsync(asyncUpdate: AsyncUpdate?): AsyncNext
 
-    fun async(timerUpdates: Iterable<TimerUpdate>): AsyncNext {
-        val async = timerUpdates.fold(asyncUpdate) { acc, update -> timerUpdate(acc, update) }
+    fun async(asyncTasks: Iterable<AsyncTask>): AsyncNext {
+        val async = asyncTasks.fold(asyncUpdate) { acc, update ->
+            val async = acc ?: AsyncUpdate()
+            when (update) {
+                is TimerUpdate -> async.withTimerUpdate(update)
+                is ExecuteAsync -> async.withAsyncExecution(update)
+            }
+        }
         return withAsync(async)
     }
 
-    fun async(vararg timerUpdates: TimerUpdate): AsyncNext = async(timerUpdates.toList())
-
-    private fun timerUpdate(asyncUpdate: AsyncUpdate?, timerUpdate: TimerUpdate): AsyncUpdate {
-        val pair = timerUpdate.key to timerUpdate
-        return asyncUpdate?.copy(timerUpdates = asyncUpdate.timerUpdates + pair) ?: AsyncUpdate(mapOf(pair))
-    }
+    fun async(vararg asyncTasks: AsyncTask): AsyncNext = async(asyncTasks.toList())
 }
 
 // TODO: private constructors an no data classes. Maybe not, probably is fine to expose all properties
@@ -77,9 +78,9 @@ data class Stay constructor(override val asyncUpdate: AsyncUpdate? = null) : Abs
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Stay
+    override fun async(asyncTasks: Iterable<AsyncTask>) = super.async(asyncTasks) as Stay
 
-    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
+    override fun async(vararg asyncTasks: AsyncTask) = async(asyncTasks.toList())
 }
 
 data class Goto(val state: State) : RelativeNext()
@@ -92,9 +93,9 @@ data class Start(
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Start
+    override fun async(asyncTasks: Iterable<AsyncTask>) = super.async(asyncTasks) as Start
 
-    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
+    override fun async(vararg asyncTasks: AsyncTask) = async(asyncTasks.toList())
 }
 
 data class AbsoluteStart(
@@ -105,9 +106,9 @@ data class AbsoluteStart(
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as AbsoluteStart
+    override fun async(asyncTasks: Iterable<AsyncTask>) = super.async(asyncTasks) as AbsoluteStart
 
-    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
+    override fun async(vararg asyncTasks: AsyncTask) = async(asyncTasks.toList())
 }
 
 object Done : RelativeNext()
@@ -121,9 +122,9 @@ data class Clear constructor(
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Clear
+    override fun async(asyncTasks: Iterable<AsyncTask>) = super.async(asyncTasks) as Clear
 
-    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
+    override fun async(vararg asyncTasks: AsyncTask) = async(asyncTasks.toList())
 }
 
 data class AbsoluteClear(val state: State) : AbsoluteNext()
@@ -143,15 +144,24 @@ sealed class RelativeRange(val inclusive: Boolean) {
     class Below(inclusive: Boolean) : RelativeRange(inclusive)
 }
 
-data class AsyncUpdate(val timerUpdates: Map<Any, TimerUpdate> = emptyMap())
+data class AsyncUpdate(
+    val timerUpdates: Map<Any, TimerUpdate> = emptyMap(),
+    val asyncExecutions: List<ExecuteAsync> = emptyList()
+) {
+    fun withTimerUpdate(timerUpdate: TimerUpdate) = copy(timerUpdates = timerUpdates + (timerUpdate.key to timerUpdate))
 
-sealed class TimerUpdate {
+    fun withAsyncExecution(executeAsync: ExecuteAsync) = copy(asyncExecutions = asyncExecutions + executeAsync)
+}
+
+sealed class AsyncTask
+
+sealed class TimerUpdate : AsyncTask() {
     abstract val key: Any
 }
 
 data class CancelTimer(override val key: Any) : TimerUpdate()
 
-// TODO: Global vs local timers
+// TODO: Global vs local timers? Maybe not. Client could always use some base child state to serve as the global state.
 interface SetTimer {
     val key: Any
     val duration: Duration
@@ -173,3 +183,12 @@ data class SetPeriodicTimer(
     override val passiveSet: Boolean = false,
     val initialDelay: Duration = Duration.ZERO
 ) : TimerUpdate(), SetTimer
+
+// TODO: global async execution
+data class ExecuteAsync(val task: () -> Any, val failureMapper: (Throwable) -> Any) : AsyncTask() {
+    constructor(task: () -> Any) : this(task, { Failure(it) })
+
+    fun onFailure(failureMapper: (Throwable) -> Any) = copy(failureMapper = failureMapper)
+}
+
+data class Failure(val cause: Throwable)

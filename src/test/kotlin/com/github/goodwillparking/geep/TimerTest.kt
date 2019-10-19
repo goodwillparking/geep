@@ -149,18 +149,5 @@ class TimerTest {
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 0)
     }
-
-    private class AsyncTestHarness() {
-        val async = TestAsyncContext()
-        val s1 = TestState("1")
-        val overseer = Overseer(s1, async)
-
-        init {
-            overseer.assertStack(s1)
-            s1.assertCounts(1, 0, 1, 0)
-        }
-
-        fun run(test: AsyncTestHarness.() -> Unit) = test()
-    }
 }
 
