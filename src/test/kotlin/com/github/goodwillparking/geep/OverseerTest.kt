@@ -39,7 +39,7 @@ class OverseerTest {
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(Done())
+        overseer.handleMessage(Done)
         overseer.assertStack(s2, s1)
         s1.assertCounts(2, 1, 3, 2)
         s2.assertCounts(1, 0, 1, 1)
@@ -51,7 +51,7 @@ class OverseerTest {
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(2, 1, 2, 1)
 
-        overseer.handleMessage(Done())
+        overseer.handleMessage(Done)
         overseer.assertStack()
         s1.assertCounts(2, 2, 3, 3)
         s2.assertCounts(1, 1, 1, 1)
@@ -78,7 +78,7 @@ class OverseerTest {
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(1, 0, 1, 1)
 
-        val s4 = TestState("4", onFocusGained = Done())
+        val s4 = TestState("4", onFocusGained = Done)
 
         overseer.handleMessage(Start(s4))
         overseer.assertStack(s3, s1)
@@ -172,7 +172,7 @@ class OverseerTest {
         s2.assertCounts(2, 2, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
 
-        val s4 = TestState("4", onStart = Done())
+        val s4 = TestState("4", onStart = Done)
 
         overseer.handleMessage(Start(s4))
         overseer.assertStack(s3, s1)
@@ -290,7 +290,7 @@ class OverseerTest {
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(Done(), 2)
+        overseer.handleMessage(Done, 2)
         overseer.assertStack(s1, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(2, 1, 1, 1)

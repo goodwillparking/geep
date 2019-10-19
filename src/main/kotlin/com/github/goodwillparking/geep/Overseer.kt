@@ -241,16 +241,11 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 
     private fun updateAsync(next: Next, recipient: Recipient) {
-        val updates = next.asyncUpdate ?: return
-        when (next) {
-            // TODO: Have interface for async state updates
-            is Start,
-            is AbsoluteStart,
-            // TODO: Clear if not inclusive
-            is Stay -> {
-                updates.timerUpdates.forEach { (_, update) ->
-                    updateTimer(recipient, update)
-                }
+        val updates = if (next is AsyncNext) next.asyncUpdate else null
+        // TODO: test inclusive clear case
+        if (updates != null && !(next is Clear && next.range.inclusive)) {
+            updates.timerUpdates.forEach { (_, update) ->
+                updateTimer(recipient, update)
             }
         }
     }

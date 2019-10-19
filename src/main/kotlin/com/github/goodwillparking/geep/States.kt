@@ -44,145 +44,96 @@ interface ChildState : State {
     }
 
     override fun onFocusGained(): AbsoluteNext {
-        return Stay().cancelTimer("")
+        return Stay()
     }
 }
 
-sealed class Next {
-    abstract val asyncUpdate: AsyncUpdate?
-
-    protected abstract fun withAsync(asyncUpdate: AsyncUpdate): Next
-
-    abstract fun async(vararg timerUpdate: TimerUpdate): Next
-
-    protected inline fun <reified N : Next> asyncTypeSafe(vararg timerUpdate: TimerUpdate): N {
-        return N::class.java.cast(timerUpdate.fold(this) { n, u -> n.timerUpdate(u) })
-    }
-
-    protected fun timerUpdate(timerUpdate: TimerUpdate): Next {
-        val asyncUpdate = asyncUpdate
-        val pair = timerUpdate.key to timerUpdate
-        return withAsync(asyncUpdate?.copy(timerUpdates = asyncUpdate.timerUpdates + pair)
-            ?: AsyncUpdate(mapOf(pair))
-        )
-    }
-
-    open fun setSingleTimer(key: Any, duration: Duration, message: Any): Next {
-        return timerUpdate(SetSingleTimer(key, duration, message))
-    }
-
-    open fun cancelTimer(key: Any): Next {
-        return timerUpdate(CancelTimer(key))
-    }
-}
+sealed class Next
 
 sealed class RelativeNext : Next()
 
 sealed class AbsoluteNext : Next()
 
-class Stay private constructor(override val asyncUpdate: AsyncUpdate?) : AbsoluteNext() {
+interface AsyncNext {
+    val asyncUpdate: AsyncUpdate?
 
-    constructor() : this(null)
+    fun withAsync(asyncUpdate: AsyncUpdate?): AsyncNext
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) =
-        Stay(asyncUpdate)
-
-    override fun async(vararg timerUpdate: TimerUpdate): Stay {
-        return asyncTypeSafe(*timerUpdate)
+    fun async(timerUpdates: Iterable<TimerUpdate>): AsyncNext {
+        val async = timerUpdates.fold(asyncUpdate) { acc, update -> timerUpdate(acc, update) }
+        return withAsync(async)
     }
 
-    override fun setSingleTimer(key: Any, duration: Duration, message: Any): Stay =
-        super.setSingleTimer(key, duration, message) as Stay
+    fun async(vararg timerUpdates: TimerUpdate): AsyncNext = async(timerUpdates.toList())
 
-    override fun cancelTimer(key: Any): Stay = super.cancelTimer(key) as Stay
-}
-
-// TODO: private constructors an no data classes
-data class Goto(val state: State, override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
-
-    constructor(state: State) : this(state, null)
-
-    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
-
-    override fun async(vararg timerUpdate: TimerUpdate): Goto {
-        return asyncTypeSafe(*timerUpdate)
+    private fun timerUpdate(asyncUpdate: AsyncUpdate?, timerUpdate: TimerUpdate): AsyncUpdate {
+        val pair = timerUpdate.key to timerUpdate
+        return asyncUpdate?.copy(timerUpdates = asyncUpdate.timerUpdates + pair) ?: AsyncUpdate(mapOf(pair))
     }
 }
 
-data class Start(val state: State, val position: RelativePosition, override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
+// TODO: private constructors an no data classes. Maybe not, probably is fine to expose all properties
+data class Stay constructor(override val asyncUpdate: AsyncUpdate? = null) : AbsoluteNext(), AsyncNext {
 
-    constructor(state: State, position: RelativePosition = RelativePosition.Above) : this(state, position,null)
+    override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Stay
 
-    override fun async(vararg timerUpdate: TimerUpdate): Start {
-        return asyncTypeSafe(*timerUpdate)
-    }
+    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
+}
+
+data class Goto(val state: State) : RelativeNext()
+
+data class Start(
+    val state: State,
+    val position: RelativePosition = RelativePosition.Above,
+    override val asyncUpdate: AsyncUpdate? = null
+) : RelativeNext(), AsyncNext {
+
+    override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
+
+    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Start
+
+    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
 }
 
 data class AbsoluteStart(
     val state: State,
-    val position: AbsolutePosition,
-    override val asyncUpdate: AsyncUpdate?
-) : AbsoluteNext() {
+    val position: AbsolutePosition = AbsolutePosition.Top,
+    override val asyncUpdate: AsyncUpdate? = null
+) : AbsoluteNext(), AsyncNext {
 
-    constructor(state: State, position: AbsolutePosition = AbsolutePosition.Top) : this(state, position, null)
+    override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun async(vararg timerUpdate: TimerUpdate): AbsoluteStart {
-        return asyncTypeSafe(*timerUpdate)
-    }
+    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as AbsoluteStart
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
 }
 
-class Done(override val asyncUpdate: AsyncUpdate?) : RelativeNext() {
-
-    constructor() : this(null)
-
-    override fun withAsync(asyncUpdate: AsyncUpdate) =
-        Done(asyncUpdate)
-
-    override fun async(vararg timerUpdate: TimerUpdate): Done {
-        return asyncTypeSafe(*timerUpdate)
-    }
-}
+object Done : RelativeNext()
 
 // TODO: nullable state for clear?
-data class Clear private constructor(
+data class Clear constructor(
     val state: State,
-    val range: RelativeRange,
-    override val asyncUpdate: AsyncUpdate?
-) : RelativeNext() {
+    val range: RelativeRange =  RelativeRange.Below(true),
+    override val asyncUpdate: AsyncUpdate? = null
+) : RelativeNext(), AsyncNext {
 
-    constructor(state: State, range: RelativeRange = RelativeRange.Below(
-        true
-    )
-    ) : this(state, range,null)
+    override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
-    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
+    override fun async(timerUpdates: Iterable<TimerUpdate>) = super.async(timerUpdates) as Clear
 
-    override fun async(vararg timerUpdate: TimerUpdate): Clear {
-        return asyncTypeSafe(*timerUpdate)
-    }
+    override fun async(vararg timerUpdates: TimerUpdate) = async(timerUpdates.toList())
 }
 
-data class AbsoluteClear(val state: State, override val asyncUpdate: AsyncUpdate?) : AbsoluteNext() {
-
-    constructor(state: State) : this(state, null)
-
-    override fun async(vararg timerUpdate: TimerUpdate): AbsoluteStart {
-        return asyncTypeSafe(*timerUpdate)
-    }
-
-    override fun withAsync(asyncUpdate: AsyncUpdate) = copy(asyncUpdate = asyncUpdate)
-}
+data class AbsoluteClear(val state: State) : AbsoluteNext()
 
 sealed class AbsolutePosition {
     object Top : AbsolutePosition()
     object Bottom : AbsolutePosition()
 }
 
-sealed class RelativePosition() {
+sealed class RelativePosition {
     object Above : RelativePosition()
     object Below : RelativePosition()
 }
