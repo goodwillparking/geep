@@ -3,6 +3,7 @@ package com.github.goodwillparking.geep
 import org.slf4j.LoggerFactory
 import java.util.IdentityHashMap
 import java.util.LinkedList
+import java.util.Queue
 import java.util.concurrent.Future
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
@@ -10,9 +11,6 @@ import kotlin.concurrent.withLock
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
-// TODO: Allow states to call back into the overseer to handle messages.
-//  This is currently possible, but could cause unexpected results.
-//  Messages probably need to be queued.
 class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     companion object {
@@ -27,6 +25,8 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     private var stack: MutableList<StackElement> = emptyList()
 
+    private val messageQueue: Queue<Any> = LinkedList()
+
     private val lock = ReentrantLock()
 
     // Client States may not use referential equality,
@@ -38,7 +38,9 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     fun stack() = lock.withLock { stack.map { it.state } }
 
-    fun handleMessage(message: Any, index: Int = 0) = lock.withLock {
+    fun handleMessage(message: Any, index: Int = 0) = lock.withLock { checkAndHandle(message, index) }
+
+    private fun checkAndHandle(message: Any, index: Int = 0) {
         if (index < 0 || index >= stack.size) {
             log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size)
             return
@@ -48,14 +50,15 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
         checkAndHandle(message, IndexedElement(element, index))
     }
 
-    private fun checkAndHandle(message: Any, indexed: IndexedElement) {
+    private fun checkAndHandle(message: Any, indexed: IndexedElement) = queueMessageOrHandle(message) {
         indexed.element.chain
             .find { state -> state.receive.isDefinedAt(message) }
             ?.also { state -> applyMessage(message, Recipient(state, indexed)) }
             ?: kotlin.run { logUnhandled(message, indexed.element.state) }
     }
 
-    private fun checkAndHandle(message: Any, recipient: Recipient) {
+    private fun checkAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
+        // TODO: children of the recipient state should be able to handle the message as well
         if (recipient.state.receive.isDefinedAt(message)) {
             applyMessage(message, recipient)
         } else {
@@ -66,6 +69,17 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
     private fun applyMessage(message: Any, recipient: Recipient) {
         log.debug("Applying message to state. message: {}, state: {}", message, recipient.indexed.element.state)
         processNext(recipient.state.receive.apply(message), recipient)
+    }
+
+    private fun queueMessageOrHandle(message: Any, handler: () -> Unit) {
+        if (lock.holdCount > 1) {
+            messageQueue.add(message)
+        } else {
+            handler()
+            if (messageQueue.isNotEmpty()) {
+                checkAndHandle(messageQueue.remove())
+            }
+        }
     }
 
     private fun logUnhandled(message: Any, state: State) =

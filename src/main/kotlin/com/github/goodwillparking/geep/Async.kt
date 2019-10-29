@@ -9,6 +9,7 @@ import java.util.function.Supplier
 
 // TODO: Support a synchronous implementation of AsyncContext (would be useful for testing).
 //  Things will get weird if the timer executes on the calling thread in the current implementation.
+// TODO: Provide method for shutting down the async context?
 interface AsyncContext {
 
     fun setSingleTimer(timer: SetSingleTimer, messageHandler: (key: Any, message: Any) -> Unit): Future<*>

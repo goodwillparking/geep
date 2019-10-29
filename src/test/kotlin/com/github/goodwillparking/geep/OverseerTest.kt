@@ -442,4 +442,29 @@ class OverseerTest {
         s4.assertCounts(2, 2, 1, 1)
     }
 
+    @Test
+    fun `when states call back into the overseer to handle messages, those messages should be handled after the current message`() {
+        val overseer = Overseer()
+        val s1 = object : State {
+            override val receive: Receive = ReceiveBuilder
+                .match<Any, Next, Next> { it } // TODO: shouldn't need to specify anything other than the message type
+                .match { list: MutableList<State> ->
+                    val last = list.removeAt(list.size - 1)
+                    list.forEach { overseer.handleMessage(Start(it)) }
+                    Start(last)
+                }
+        }
+
+        overseer.start(s1)
+        overseer.assertStack(s1)
+
+        val s2 = TestState("2")
+        val s3 = TestState("3")
+        val s4 = TestState("4")
+        val s5 = TestState("5")
+
+        overseer.handleMessage(mutableListOf(s2, s3, s4, s5))
+        // s5 should start first because Start(s5) was the result of the message being handled
+        overseer.assertStack(s1, s5, s2, s3, s4)
+    }
 }
