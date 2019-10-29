@@ -75,5 +75,23 @@ class TimerTest {
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 0)
     }
+
+    @Test
+    fun `a state's timers should not fire if it leaves the stack`() = AsyncTestHarness().run {
+        overseer.handleMessage(Stay().async(
+            SetSingleTimer("t1", Duration.ZERO, "e1"),
+            SetPeriodicTimer("t2", Duration.ZERO, "e2")))
+        s1.assertEvents()
+
+        val s2 = TestState("2")
+        overseer.handleMessage(AbsoluteClear(s2))
+        s1.assertCounts(1, 1, 1, 1)
+        s2.assertCounts(1, 0, 1, 0)
+
+        async.fireTimer("t1")
+        s1.assertEvents()
+        async.fireTimer("t2")
+        s1.assertEvents()
+    }
 }
 

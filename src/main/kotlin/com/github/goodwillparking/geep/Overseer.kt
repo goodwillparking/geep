@@ -320,6 +320,7 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
                     recipient,
                     key,
                     message)
+                timers.remove(recipient.state)
             } else {
                 checkAndHandle(message, newRecipient)
             }
@@ -372,10 +373,12 @@ class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
                     recipient,
                     message
                 )
+                asyncExecutions.remove(recipient.state)
             } else if (message !is Unit) {
                 checkAndHandle(message, newRecipient)
             }
         }
+        // TODO: The future should be removed from asyncExecutions.
     }
 
     private fun findCurrentRecipient(recipient: Recipient): Recipient? {
