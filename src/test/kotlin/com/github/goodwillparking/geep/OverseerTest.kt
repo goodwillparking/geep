@@ -446,8 +446,8 @@ class OverseerTest {
     fun `when states call back into the overseer to handle messages, those messages should be handled after the current message`() {
         val overseer = Overseer()
         val s1 = object : State {
-            override val receive: Receive = ReceiveBuilder
-                .match<Any, Next, Next> { it } // TODO: shouldn't need to specify anything other than the message type
+            override val receive: Receive = ReceiveBuilder()
+                .match<Next> { it }
                 .match { list: MutableList<State> ->
                     val last = list.removeAt(list.size - 1)
                     list.forEach { overseer.handleMessage(Start(it)) }

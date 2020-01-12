@@ -16,7 +16,7 @@ interface PartialFunction<T, R> {
 
     fun isDefinedAt(value: T): Boolean
 
-    fun orElse(other: PartialFunction<T, R>): PartialFunction<T, R> =
+    fun orElse(other: PartialFunction<T, out R>): PartialFunction<T, R> =
         object : PartialFunction<T, R> {
             override fun apply(t: T) =
                 if (this@PartialFunction.isDefinedAt(t)) this@PartialFunction.apply(t) else other.apply(t)
@@ -29,28 +29,17 @@ inline fun <T, R, reified C : T> PartialFunction<T, R>.match(
     crossinline predicate: (C) -> Boolean = { true },
     crossinline apply: (C) -> R
 ): PartialFunction<T, R> = orElse(
-    PFBuilder.match(
-        predicate,
-        apply
-    )
+    object : PartialFunction<T, R> {
+        override fun apply(t: T) = apply(t as C)
+        override fun isDefinedAt(value: T) = value is C && predicate(value)
+    }
 )
 
-class PFBuilder<T, R> {
-
-    companion object {
-        inline fun <T, R, reified C : T> match(
-            crossinline predicate: (C) -> Boolean = { true },
-            crossinline apply: (C) -> R
-        ): PartialFunction<T, R> =
-            object : PartialFunction<T, R> {
-                override fun apply(t: T) = apply(t as C)
-                override fun isDefinedAt(value: T) = value is C && predicate(value)
-            }
-    }
+data class PFBuilder<T, R>(val pf: PartialFunction<T, R> = PartialFunction.empty()) : PartialFunction<T, R> by pf {
 
     inline fun <reified C : T> match(
         crossinline predicate: (C) -> Boolean = { true },
         crossinline apply: (C) -> R
-    ): PartialFunction<T, R> =
-        Companion.match(predicate, apply)
+    ): PFBuilder<T, R> =
+        copy(pf = pf.match(predicate, apply))
 }
