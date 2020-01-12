@@ -108,5 +108,27 @@ class AsyncExecutionTest {
         async.fireAsync()
         s1.assertEvents("e2", "e1")
     }
+
+
+    @Test
+    fun `a state's aux state can handle the async result`() {
+        val aux = TestAuxiliaryState("a1")
+        val primary = TestPrimaryState("s1", interceptedType = Int::class.javaObjectType, auxiliaryState = aux)
+
+        AsyncTestHarness(primary).run {
+            stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
+            stateMachine.handleMessage(Stay().async(ExecuteAsync { 1 }))
+
+            s1.assertEvents()
+
+            async.fireAsync()
+            primary.assertEvents()
+            aux.assertEvents("e1")
+
+            async.fireAsync()
+            primary.assertEvents(1)
+            aux.assertEvents("e1")
+        }
+    }
 }
 

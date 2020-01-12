@@ -123,9 +123,8 @@ class TestFuture<V> private constructor(
     }
 }
 
-class AsyncTestHarness() {
+class AsyncTestHarness(val s1: TestPrimaryState = TestPrimaryState("1")) {
     val async = TestAsyncContext()
-    val s1 = TestPrimaryState("1")
     val stateMachine = StateMachine(s1, async)
 
     init {

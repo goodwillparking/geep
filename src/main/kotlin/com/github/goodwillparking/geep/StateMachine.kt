@@ -57,13 +57,10 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
             ?: kotlin.run { logUnhandled(message, indexed.element.state) }
     }
 
+    // TODO: this shouldn't call queueMessageOrHandle since that will have the message handled by the focused state.
+    //  We need to queue and include the recipient or something.
     private fun checkAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
-        // TODO: auxiliaries of the recipient state should be able to handle the message as well
-        if (recipient.state.receive.isDefinedAt(message)) {
-            applyMessage(message, recipient)
-        } else {
-            logUnhandled(message, recipient.state)
-        }
+        checkAndHandle(message, recipient.indexed)
     }
 
     private fun applyMessage(message: Any, recipient: Recipient) {
@@ -72,7 +69,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 
     private fun queueMessageOrHandle(message: Any, handler: () -> Unit) {
-        if (lock.holdCount > 1) {
+        if (lock.holdCount > 1) { // TODO: Why is this > 1? Shouldn't it be >= 1?
             messageQueue.add(message)
         } else {
             handler()
@@ -393,6 +390,8 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
                         // skip index 0 as that was checked above via the StackElement
                         .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
                 }?.let {
+                    // TODO: If the async task was scheduled by an aux state,
+                    //  the owner of that state should not handle the message.
                     Recipient(it, IndexedElement(stackElement, index))
                 }
             }

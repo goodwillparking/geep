@@ -466,4 +466,6 @@ class StateMachineTest {
         // s5 should start first because Start(s5) was the result of the message being handled
         stateMachine.assertStack(s1, s5, s2, s3, s4)
     }
+
+    // TODO: test aux states put directly on stack
 }

@@ -93,5 +93,24 @@ class TimerTest {
         async.fireTimer("t2")
         s1.assertEvents()
     }
+
+    @Test
+    fun `a state's aux state should be able to handled the timer message`() {
+        val aux = TestAuxiliaryState("a1")
+        val primary = TestPrimaryState("s1", interceptedType = Int::class.javaObjectType, auxiliaryState = aux)
+
+        AsyncTestHarness(primary).run {
+            stateMachine.handleMessage(Stay().async(SetSingleTimer("t1", Duration.ZERO, "e1")))
+            stateMachine.handleMessage(Stay().async(SetSingleTimer("t2", Duration.ZERO, 1)))
+
+            async.fireTimer("t1")
+            primary.assertEvents()
+            aux.assertEvents("e1")
+
+            async.fireTimer("t2")
+            primary.assertEvents(1)
+            aux.assertEvents("e1")
+        }
+    }
 }
 
