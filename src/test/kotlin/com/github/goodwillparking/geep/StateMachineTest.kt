@@ -103,10 +103,10 @@ class StateMachineTest {
     }
 
     @Test
-    fun `child states should be able to handle messages that weren't handled by their parents`() {
-        val s1 = TestChildState("1", interceptedType = String::class.java)
-        val s2 = TestChildState("2", interceptedType = Integer::class.java, childState = s1)
-        val s3 = TestPrimaryState("3", interceptedType = Double::class.javaObjectType, childState = s2)
+    fun `auxiliary states should be able to handle messages that weren't handled by their parents`() {
+        val s1 = TestAuxiliaryState("1", interceptedType = String::class.java)
+        val s2 = TestAuxiliaryState("2", interceptedType = Integer::class.java, auxiliaryState = s1)
+        val s3 = TestPrimaryState("3", interceptedType = Double::class.javaObjectType, auxiliaryState = s2)
 
         val stateMachine = StateMachine(s3)
         s1.assertCounts(0, 0)

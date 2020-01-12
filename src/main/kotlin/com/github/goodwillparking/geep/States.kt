@@ -4,17 +4,17 @@ import java.time.Duration
 
 typealias Receive = PartialFunction<Any, out Next>
 
-typealias ChildReceive = PartialFunction<Any, out AbsoluteNext>
+typealias AuxiliaryReceive = PartialFunction<Any, out AbsoluteNext>
 
 typealias ReceiveBuilder = PFBuilder<Any, Next>
 
-typealias ChildReceiveBuilder = PFBuilder<Any, AbsoluteNext>
+typealias AuxiliaryReceiveBuilder = PFBuilder<Any, AbsoluteNext>
 
 interface State {
 
     val receive: Receive
 
-    val childState: ChildState?
+    val auxiliaryState: AuxiliaryState?
         get() = null
 
     fun onStart(): Next {
@@ -34,10 +34,8 @@ interface PrimaryState : State {
     fun onFocusLost() {}
 }
 
-// TODO: This parent/child naming is a bit counter intuitive if viewed from the perspective of a tree.
-//  FallbackState?
-interface ChildState : State {
-    override val receive: ChildReceive
+interface AuxiliaryState : State {
+    override val receive: AuxiliaryReceive
 
     override fun onStart(): AbsoluteNext {
         return Stay()
@@ -158,7 +156,7 @@ sealed class TimerUpdate : AsyncTask() {
 
 data class CancelTimer(override val key: Any) : TimerUpdate()
 
-// TODO: Global vs local timers? Maybe not. Client could always use some base child state to serve as the global state.
+// TODO: Global vs local timers? Maybe not. Client could always use some base aux state to serve as the global state.
 interface SetTimer {
     val key: Any
     val duration: Duration

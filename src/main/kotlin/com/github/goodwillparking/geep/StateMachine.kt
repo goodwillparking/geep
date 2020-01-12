@@ -58,7 +58,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 
     private fun checkAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
-        // TODO: children of the recipient state should be able to handle the message as well
+        // TODO: auxiliaries of the recipient state should be able to handle the message as well
         if (recipient.state.receive.isDefinedAt(message)) {
             applyMessage(message, recipient)
         } else {
@@ -407,12 +407,12 @@ private class StackElement(val state: State) {
         var s = state
         val acc = LinkedList<State>()
         acc.add(s)
-        var child = s.childState
+        var aux = s.auxiliaryState
         // TODO: check for infinite loops
-        while (child != null) {
-            s = child
+        while (aux != null) {
+            s = aux
             acc.add(s)
-            child = s.childState
+            aux = s.auxiliaryState
         }
         acc
     }
