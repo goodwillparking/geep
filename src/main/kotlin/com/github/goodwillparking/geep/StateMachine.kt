@@ -143,17 +143,16 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
         if (focusedChanged || (oldFocused?.state === recipient?.indexed?.element?.state && next is Goto)) {
             if (oldFocused != null) {
-                log.debug("Focus lost for state {}", oldFocused.state)
-                oldFocused.state.onFocusLost()
+                val state = oldFocused.state
+                log.debug("Focus lost for state {}", state)
+                if (state is PrimaryState) state.onFocusLost()
             }
             if (newFocused != null) {
-                log.debug("Focus gained for state {}", newFocused.state)
-                processNext(newFocused.state.onFocusGained(),
-                    Recipient(
-                        newFocused.state,
-                        IndexedElement(newFocused, 0)
-                    )
-                )
+                val state = newFocused.state
+                log.debug("Focus gained for state {}", state)
+                if (state is PrimaryState) {
+                    processNext(state.onFocusGained(), Recipient(state, IndexedElement(newFocused, 0)))
+                }
             }
         }
     }
@@ -401,15 +400,19 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 }
 
+// TODO: can this be a data class? I think I wanted default equals/hashcode, but I can't remember why.
 private class StackElement(val state: State) {
     // TODO: need to be lazy?
     val chain: List<State> by lazy {
         var s = state
         val acc = LinkedList<State>()
         acc.add(s)
-        while (s is ParentState) {
-            s = s.childState
+        var child = s.childState
+        // TODO: check for infinite loops
+        while (child != null) {
+            s = child
             acc.add(s)
+            child = s.childState
         }
         acc
     }

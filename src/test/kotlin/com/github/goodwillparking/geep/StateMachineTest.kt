@@ -10,12 +10,12 @@ class StateMachineTest {
 
     @Test
     fun `states should be able to modify the stack when they receive messages`() {
-        val s1 = TestState("1")
+        val s1 = TestPrimaryState("1")
         val stateMachine = StateMachine(s1)
         stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
 
-        val s2 = TestState("2")
+        val s2 = TestPrimaryState("2")
         stateMachine.handleMessage(Goto(s2))
         stateMachine.assertStack(s2)
         s1.assertCounts(1, 1,1, 1)
@@ -26,7 +26,7 @@ class StateMachineTest {
         s1.assertCounts(2, 1, 2, 1)
         s2.assertCounts(1, 0,1, 1)
 
-        val s3 = TestState("3")
+        val s3 = TestPrimaryState("3")
         stateMachine.handleMessage(Start(s3))
         stateMachine.assertStack(s2, s1, s3)
         s1.assertCounts(2, 1, 2, 2)
@@ -60,11 +60,11 @@ class StateMachineTest {
 
     @Test
     fun `states should be able to modify the stack when they gain focus`() {
-        val s1 = TestState("1")
+        val s1 = TestPrimaryState("1")
         val s2 =
-            TestState("2", onFocusGained = Goto(s1))
+            TestPrimaryState("2", onFocusGained = Goto(s1))
         val s3 =
-            TestState("3", onFocusGained = Start(s2))
+            TestPrimaryState("3", onFocusGained = Start(s2))
 
         val stateMachine = StateMachine(s3)
         stateMachine.assertStack(s3, s1)
@@ -78,7 +78,7 @@ class StateMachineTest {
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(1, 0, 1, 1)
 
-        val s4 = TestState("4", onFocusGained = Done)
+        val s4 = TestPrimaryState("4", onFocusGained = Done)
 
         stateMachine.handleMessage(Start(s4))
         stateMachine.assertStack(s3, s1)
@@ -88,9 +88,9 @@ class StateMachineTest {
         s4.assertCounts(1, 1, 1, 1)
 
         val s5 =
-            TestState("5", onFocusGained = Start(s3))
+            TestPrimaryState("5", onFocusGained = Start(s3))
         val s6 =
-            TestState("6", onFocusGained = Clear(s5))
+            TestPrimaryState("6", onFocusGained = Clear(s5))
 
         stateMachine.handleMessage(Goto(s6))
         stateMachine.assertStack(s5, s3, s1)
@@ -105,13 +105,12 @@ class StateMachineTest {
     @Test
     fun `child states should be able to handle messages that weren't handled by their parents`() {
         val s1 = TestChildState("1", interceptedType = String::class.java)
-        val s2 =
-            TestMiddleState("2", interceptedType = Integer::class.java, childState = s1)
-        val s3 = TestParentState("3", Double::class.javaObjectType, s2)
+        val s2 = TestChildState("2", interceptedType = Integer::class.java, childState = s1)
+        val s3 = TestPrimaryState("3", interceptedType = Double::class.javaObjectType, childState = s2)
 
         val stateMachine = StateMachine(s3)
-        s1.assertCounts(0, 0, 0, 0)
-        s2.assertCounts(0, 0, 0, 0)
+        s1.assertCounts(0, 0)
+        s2.assertCounts(0, 0)
         s3.assertCounts(1, 0, 1, 0)
 
         stateMachine.handleMessage(1.0)
@@ -149,16 +148,16 @@ class StateMachineTest {
         s2.assertEvents(1, 2)
         s3.assertEvents(1.0, 2.0)
 
-        s1.assertCounts(0, 0, 0, 0)
-        s2.assertCounts(0, 0, 0, 0)
+        s1.assertCounts(0, 0)
+        s2.assertCounts(0, 0)
         s3.assertCounts(1, 0, 1, 0)
     }
 
     @Test
     fun `states should be able to modify the stack when they start`() {
-        val s1 = TestState("1")
-        val s2 = TestState("2", onStart = Goto(s1))
-        val s3 = TestState("3", onStart = Start(s2))
+        val s1 = TestPrimaryState("1")
+        val s2 = TestPrimaryState("2", onStart = Goto(s1))
+        val s3 = TestPrimaryState("3", onStart = Start(s2))
 
         val stateMachine = StateMachine(s3)
         stateMachine.assertStack(s3, s1)
@@ -172,7 +171,7 @@ class StateMachineTest {
         s2.assertCounts(2, 2, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
 
-        val s4 = TestState("4", onStart = Done)
+        val s4 = TestPrimaryState("4", onStart = Done)
 
         stateMachine.handleMessage(Start(s4))
         stateMachine.assertStack(s3, s1)
@@ -181,8 +180,8 @@ class StateMachineTest {
         s3.assertCounts(1, 0, 0, 0)
         s4.assertCounts(1, 1, 0, 0)
 
-        val s5 = TestState("5", onStart = Start(s3))
-        val s6 = TestState("6", onStart = Clear(s5))
+        val s5 = TestPrimaryState("5", onStart = Start(s3))
+        val s6 = TestPrimaryState("6", onStart = Clear(s5))
 
         stateMachine.handleMessage(Goto(s6))
         stateMachine.assertStack(s5, s3, s1)
@@ -196,7 +195,7 @@ class StateMachineTest {
 
     @Test
     fun `a state should lose and gain focus if it does a goto to itself`() {
-        val s1 = TestState("1")
+        val s1 = TestPrimaryState("1")
 
         val stateMachine = StateMachine(s1)
         stateMachine.assertStack(s1)
@@ -210,7 +209,7 @@ class StateMachineTest {
     @Test
     fun `transition handlers should be called in the order of onEnd, onStart, onFocusLost, onFocusGained`() {
 
-        fun mockState() = mock(State::class.java).also {
+        fun mockState() = mock(PrimaryState::class.java).also {
             `when`(it.receive).thenReturn(ReceiveBuilder().match { n: Next -> n })
             `when`(it.onStart()).thenReturn(Stay())
             `when`(it.onFocusGained()).thenReturn(Stay())
@@ -243,12 +242,12 @@ class StateMachineTest {
         val stateMachine = StateMachine()
         stateMachine.assertStack()
 
-        val s1 = TestState("1")
+        val s1 = TestPrimaryState("1")
         stateMachine.start(s1)
         stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
 
-        val s2 = TestState("2")
+        val s2 = TestPrimaryState("2")
         stateMachine.start(s2)
         stateMachine.assertStack(s1, s2)
         s1.assertCounts(1, 0, 1, 1)
@@ -257,9 +256,9 @@ class StateMachineTest {
 
     @Test
     fun `states should be able to modify the stack in the middle of the stack`() {
-        val s1 = TestState("1")
-        val s2 = TestState("2")
-        val s3 = TestState("3")
+        val s1 = TestPrimaryState("1")
+        val s2 = TestPrimaryState("2")
+        val s3 = TestPrimaryState("3")
 
         val stateMachine = StateMachine(s1)
         stateMachine.start(s2)
@@ -275,7 +274,7 @@ class StateMachineTest {
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        val s4 = TestState("4")
+        val s4 = TestPrimaryState("4")
         stateMachine.handleMessage(Goto(s4), 1)
         stateMachine.assertStack(s1, s4, s3)
         s1.assertCounts(1, 0, 1, 1)
@@ -307,9 +306,9 @@ class StateMachineTest {
 
     @Test
     fun `the publicly accessible stack should be a copy of the stateMachine's stack`() {
-        val s1 = TestState("1")
-        val s2 = TestState("2")
-        val s3 = TestState("3")
+        val s1 = TestPrimaryState("1")
+        val s2 = TestPrimaryState("2")
+        val s3 = TestPrimaryState("3")
 
         val stateMachine = StateMachine(s1)
         stateMachine.start(s2)
@@ -323,9 +322,9 @@ class StateMachineTest {
 
     @Test
     fun `test relative clears and absolute starts`() {
-        val s1 = TestState("1")
-        val s2 = TestState("2")
-        val s3 = TestState("3")
+        val s1 = TestPrimaryState("1")
+        val s2 = TestPrimaryState("2")
+        val s3 = TestPrimaryState("3")
 
         val stateMachine = StateMachine(s1)
         stateMachine.start(s2)
@@ -335,7 +334,7 @@ class StateMachineTest {
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        val s4 = TestState("4")
+        val s4 = TestPrimaryState("4")
         stateMachine.handleMessage(
             Clear(
                 s4,
@@ -394,7 +393,7 @@ class StateMachineTest {
         s3.assertCounts(2, 1, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        val s5 = TestState("5")
+        val s5 = TestPrimaryState("5")
         stateMachine.handleMessage(
             Clear(
                 s5,
@@ -458,10 +457,10 @@ class StateMachineTest {
         stateMachine.start(s1)
         stateMachine.assertStack(s1)
 
-        val s2 = TestState("2")
-        val s3 = TestState("3")
-        val s4 = TestState("4")
-        val s5 = TestState("5")
+        val s2 = TestPrimaryState("2")
+        val s3 = TestPrimaryState("3")
+        val s4 = TestPrimaryState("4")
+        val s5 = TestPrimaryState("5")
 
         stateMachine.handleMessage(mutableListOf(s2, s3, s4, s5))
         // s5 should start first because Start(s5) was the result of the message being handled

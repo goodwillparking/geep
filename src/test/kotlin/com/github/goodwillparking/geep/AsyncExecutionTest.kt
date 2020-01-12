@@ -28,11 +28,11 @@ class AsyncExecutionTest {
 
     @Test
     fun `the state that started the async execution will receive the result`() = AsyncTestHarness().run {
-        val s2 = TestState("s2")
+        val s2 = TestPrimaryState("s2")
         stateMachine.handleMessage(Start(s2))
         stateMachine.assertStack(s1, s2)
 
-        val s3 = TestState("s3")
+        val s3 = TestPrimaryState("s3")
         stateMachine.handleMessage(Start(s3))
         stateMachine.assertStack(s1, s2, s3)
 

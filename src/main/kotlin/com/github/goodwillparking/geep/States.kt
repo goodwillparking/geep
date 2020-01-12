@@ -14,11 +14,17 @@ interface State {
 
     val receive: Receive
 
+    val childState: ChildState?
+        get() = null
+
     fun onStart(): Next {
         return Stay()
     }
 
     fun onEnd() {}
+}
+
+interface PrimaryState : State {
 
     // TODO: this should take the previously focused state as a param and vice versa.
     fun onFocusGained(): Next {
@@ -28,22 +34,12 @@ interface State {
     fun onFocusLost() {}
 }
 
-// TODO: generic type???
-interface ParentState : State {
-    val childState: ChildState
-}
-
 // TODO: This parent/child naming is a bit counter intuitive if viewed from the perspective of a tree.
 //  FallbackState?
-// TODO: focus handlers don't make sense for child states
 interface ChildState : State {
     override val receive: ChildReceive
 
     override fun onStart(): AbsoluteNext {
-        return Stay()
-    }
-
-    override fun onFocusGained(): AbsoluteNext {
         return Stay()
     }
 }
@@ -129,6 +125,7 @@ data class Clear constructor(
 
 data class AbsoluteClear(val state: State) : AbsoluteNext()
 
+// TODO: tostring
 sealed class AbsolutePosition {
     object Top : AbsolutePosition()
     object Bottom : AbsolutePosition()

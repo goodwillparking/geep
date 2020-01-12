@@ -60,7 +60,7 @@ class TimerTest {
     @Test
     fun `the next state should be processed even if the AsyncContext fails to schedule a timer`() {
         val async = mock(AsyncContext::class.java)
-        val s1 = TestState("1")
+        val s1 = TestPrimaryState("1")
         val stateMachine = StateMachine(s1, async)
         stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
@@ -69,7 +69,7 @@ class TimerTest {
             anyObject(),
             anyObject()
         )).thenThrow(RuntimeException("No timer for you."))
-        val s2 = TestState("2")
+        val s2 = TestPrimaryState("2")
         stateMachine.handleMessage(Start(s2).async(SetSingleTimer("t1", Duration.ZERO, "e1")))
         stateMachine.assertStack(s1, s2)
         s1.assertCounts(1, 0, 1, 1)
@@ -83,7 +83,7 @@ class TimerTest {
             SetPeriodicTimer("t2", Duration.ZERO, "e2")))
         s1.assertEvents()
 
-        val s2 = TestState("2")
+        val s2 = TestPrimaryState("2")
         stateMachine.handleMessage(AbsoluteClear(s2))
         s1.assertCounts(1, 1, 1, 1)
         s2.assertCounts(1, 0, 1, 0)
