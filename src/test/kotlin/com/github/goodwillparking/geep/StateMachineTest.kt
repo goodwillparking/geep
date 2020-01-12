@@ -6,53 +6,53 @@ import org.mockito.Mockito.inOrder
 import org.mockito.Mockito.mock
 import java.util.Locale
 
-class OverseerTest {
+class StateMachineTest {
 
     @Test
     fun `states should be able to modify the stack when they receive messages`() {
         val s1 = TestState("1")
-        val overseer = Overseer(s1)
-        overseer.assertStack(s1)
+        val stateMachine = StateMachine(s1)
+        stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
 
         val s2 = TestState("2")
-        overseer.handleMessage(Goto(s2))
-        overseer.assertStack(s2)
+        stateMachine.handleMessage(Goto(s2))
+        stateMachine.assertStack(s2)
         s1.assertCounts(1, 1,1, 1)
         s2.assertCounts(1, 0,1, 0)
 
-        overseer.handleMessage(Start(s1))
-        overseer.assertStack(s2, s1)
+        stateMachine.handleMessage(Start(s1))
+        stateMachine.assertStack(s2, s1)
         s1.assertCounts(2, 1, 2, 1)
         s2.assertCounts(1, 0,1, 1)
 
         val s3 = TestState("3")
-        overseer.handleMessage(Start(s3))
-        overseer.assertStack(s2, s1, s3)
+        stateMachine.handleMessage(Start(s3))
+        stateMachine.assertStack(s2, s1, s3)
         s1.assertCounts(2, 1, 2, 2)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(Stay())
-        overseer.assertStack(s2, s1, s3)
+        stateMachine.handleMessage(Stay())
+        stateMachine.assertStack(s2, s1, s3)
         s1.assertCounts(2, 1, 2, 2)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(Done)
-        overseer.assertStack(s2, s1)
+        stateMachine.handleMessage(Done)
+        stateMachine.assertStack(s2, s1)
         s1.assertCounts(2, 1, 3, 2)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 1, 1, 1)
 
-        overseer.handleMessage(Clear(s3))
-        overseer.assertStack(s3)
+        stateMachine.handleMessage(Clear(s3))
+        stateMachine.assertStack(s3)
         s1.assertCounts(2, 2, 3, 3)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(2, 1, 2, 1)
 
-        overseer.handleMessage(Done)
-        overseer.assertStack()
+        stateMachine.handleMessage(Done)
+        stateMachine.assertStack()
         s1.assertCounts(2, 2, 3, 3)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(2, 2, 2, 2)
@@ -66,22 +66,22 @@ class OverseerTest {
         val s3 =
             TestState("3", onFocusGained = Start(s2))
 
-        val overseer = Overseer(s3)
-        overseer.assertStack(s3, s1)
+        val stateMachine = StateMachine(s3)
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(1, 0, 1, 0)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 1)
 
-        overseer.handleMessage(Goto(s2))
-        overseer.assertStack(s3, s1)
+        stateMachine.handleMessage(Goto(s2))
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(2, 1, 2, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(1, 0, 1, 1)
 
         val s4 = TestState("4", onFocusGained = Done)
 
-        overseer.handleMessage(Start(s4))
-        overseer.assertStack(s3, s1)
+        stateMachine.handleMessage(Start(s4))
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(2, 1, 3, 2)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(1, 0, 1, 1)
@@ -92,8 +92,8 @@ class OverseerTest {
         val s6 =
             TestState("6", onFocusGained = Clear(s5))
 
-        overseer.handleMessage(Goto(s6))
-        overseer.assertStack(s5, s3, s1)
+        stateMachine.handleMessage(Goto(s6))
+        stateMachine.assertStack(s5, s3, s1)
         s1.assertCounts(3, 2, 4, 3)
         s2.assertCounts(3, 3, 3, 3)
         s3.assertCounts(2, 1, 2, 2)
@@ -109,42 +109,42 @@ class OverseerTest {
             TestMiddleState("2", interceptedType = Integer::class.java, childState = s1)
         val s3 = TestParentState("3", Double::class.javaObjectType, s2)
 
-        val overseer = Overseer(s3)
+        val stateMachine = StateMachine(s3)
         s1.assertCounts(0, 0, 0, 0)
         s2.assertCounts(0, 0, 0, 0)
         s3.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(1.0)
+        stateMachine.handleMessage(1.0)
         s1.assertEvents()
         s2.assertEvents()
         s3.assertEvents(1.0)
 
-        overseer.handleMessage(1)
+        stateMachine.handleMessage(1)
         s1.assertEvents()
         s2.assertEvents(1)
         s3.assertEvents(1.0)
 
-        overseer.handleMessage("1")
+        stateMachine.handleMessage("1")
         s1.assertEvents("1")
         s2.assertEvents(1)
         s3.assertEvents(1.0)
 
-        overseer.handleMessage(Locale.CANADA)
+        stateMachine.handleMessage(Locale.CANADA)
         s1.assertEvents("1")
         s2.assertEvents(1)
         s3.assertEvents(1.0)
 
-        overseer.handleMessage("2")
+        stateMachine.handleMessage("2")
         s1.assertEvents("1", "2")
         s2.assertEvents(1)
         s3.assertEvents(1.0)
 
-        overseer.handleMessage(2)
+        stateMachine.handleMessage(2)
         s1.assertEvents("1", "2")
         s2.assertEvents(1, 2)
         s3.assertEvents(1.0)
 
-        overseer.handleMessage(2.0)
+        stateMachine.handleMessage(2.0)
         s1.assertEvents("1", "2")
         s2.assertEvents(1, 2)
         s3.assertEvents(1.0, 2.0)
@@ -160,22 +160,22 @@ class OverseerTest {
         val s2 = TestState("2", onStart = Goto(s1))
         val s3 = TestState("3", onStart = Start(s2))
 
-        val overseer = Overseer(s3)
-        overseer.assertStack(s3, s1)
+        val stateMachine = StateMachine(s3)
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(1, 0, 1, 0)
         s2.assertCounts(1, 1, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(Goto(s2))
-        overseer.assertStack(s3, s1)
+        stateMachine.handleMessage(Goto(s2))
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(2, 1, 2, 1)
         s2.assertCounts(2, 2, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
 
         val s4 = TestState("4", onStart = Done)
 
-        overseer.handleMessage(Start(s4))
-        overseer.assertStack(s3, s1)
+        stateMachine.handleMessage(Start(s4))
+        stateMachine.assertStack(s3, s1)
         s1.assertCounts(2, 1, 3, 2)
         s2.assertCounts(2, 2, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
@@ -184,8 +184,8 @@ class OverseerTest {
         val s5 = TestState("5", onStart = Start(s3))
         val s6 = TestState("6", onStart = Clear(s5))
 
-        overseer.handleMessage(Goto(s6))
-        overseer.assertStack(s5, s3, s1)
+        stateMachine.handleMessage(Goto(s6))
+        stateMachine.assertStack(s5, s3, s1)
         s1.assertCounts(3, 2, 4, 3)
         s2.assertCounts(3, 3, 0, 0)
         s3.assertCounts(2, 1, 0, 0)
@@ -198,12 +198,12 @@ class OverseerTest {
     fun `a state should lose and gain focus if it does a goto to itself`() {
         val s1 = TestState("1")
 
-        val overseer = Overseer(s1)
-        overseer.assertStack(s1)
+        val stateMachine = StateMachine(s1)
+        stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(Goto(s1))
-        overseer.assertStack(s1)
+        stateMachine.handleMessage(Goto(s1))
+        stateMachine.assertStack(s1)
         s1.assertCounts(2, 1, 2, 1)
     }
 
@@ -220,14 +220,14 @@ class OverseerTest {
         val s2 = mockState()
         val inOrder = inOrder(s1, s2)
 
-        val overseer = Overseer(s1)
-        overseer.assertStack(s1)
+        val stateMachine = StateMachine(s1)
+        stateMachine.assertStack(s1)
 
         inOrder.verify(s1).onStart()
         inOrder.verify(s1).onFocusGained()
 
-        overseer.handleMessage(Goto(s2))
-        overseer.assertStack(s2)
+        stateMachine.handleMessage(Goto(s2))
+        stateMachine.assertStack(s2)
 
         inOrder.verify(s1).onEnd()
         inOrder.verify(s2).onStart()
@@ -238,19 +238,19 @@ class OverseerTest {
     }
 
     @Test
-    fun `a state can be started by calling start on the overseer`() {
+    fun `a state can be started by calling start on the stateMachine`() {
 
-        val overseer = Overseer()
-        overseer.assertStack()
+        val stateMachine = StateMachine()
+        stateMachine.assertStack()
 
         val s1 = TestState("1")
-        overseer.start(s1)
-        overseer.assertStack(s1)
+        stateMachine.start(s1)
+        stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
 
         val s2 = TestState("2")
-        overseer.start(s2)
-        overseer.assertStack(s1, s2)
+        stateMachine.start(s2)
+        stateMachine.assertStack(s1, s2)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 0)
     }
@@ -261,44 +261,44 @@ class OverseerTest {
         val s2 = TestState("2")
         val s3 = TestState("3")
 
-        val overseer = Overseer(s1)
-        overseer.start(s2)
-        overseer.start(s3)
-        overseer.assertStack(s1, s2, s3)
+        val stateMachine = StateMachine(s1)
+        stateMachine.start(s2)
+        stateMachine.start(s3)
+        stateMachine.assertStack(s1, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
-        overseer.handleMessage(Stay(), 1)
-        overseer.assertStack(s1, s2, s3)
+        stateMachine.handleMessage(Stay(), 1)
+        stateMachine.assertStack(s1, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
         val s4 = TestState("4")
-        overseer.handleMessage(Goto(s4), 1)
-        overseer.assertStack(s1, s4, s3)
+        stateMachine.handleMessage(Goto(s4), 1)
+        stateMachine.assertStack(s1, s4, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(Start(s2), 1)
-        overseer.assertStack(s1, s4, s2, s3)
+        stateMachine.handleMessage(Start(s2), 1)
+        stateMachine.assertStack(s1, s4, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(2, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(Done, 2)
-        overseer.assertStack(s1, s2, s3)
+        stateMachine.handleMessage(Done, 2)
+        stateMachine.assertStack(s1, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(2, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 1, 0, 0)
 
-        overseer.handleMessage(AbsoluteClear(s4), 1)
-        overseer.assertStack(s4)
+        stateMachine.handleMessage(AbsoluteClear(s4), 1)
+        stateMachine.assertStack(s4)
         s1.assertCounts(1, 1, 1, 1)
         s2.assertCounts(2, 2, 1, 1)
         s3.assertCounts(1, 1, 1, 1)
@@ -306,19 +306,19 @@ class OverseerTest {
     }
 
     @Test
-    fun `the publicly accessible stack should be a copy of the overseer's stack`() {
+    fun `the publicly accessible stack should be a copy of the stateMachine's stack`() {
         val s1 = TestState("1")
         val s2 = TestState("2")
         val s3 = TestState("3")
 
-        val overseer = Overseer(s1)
-        overseer.start(s2)
-        overseer.start(s3)
-        overseer.assertStack(s1, s2, s3)
+        val stateMachine = StateMachine(s1)
+        stateMachine.start(s2)
+        stateMachine.start(s3)
+        stateMachine.assertStack(s1, s2, s3)
 
-        val stack = overseer.stack() as MutableList
+        val stack = stateMachine.stack() as MutableList
         stack.add(s1)
-        overseer.assertStack(s1, s2, s3)
+        stateMachine.assertStack(s1, s2, s3)
     }
 
     @Test
@@ -327,115 +327,115 @@ class OverseerTest {
         val s2 = TestState("2")
         val s3 = TestState("3")
 
-        val overseer = Overseer(s1)
-        overseer.start(s2)
-        overseer.start(s3)
-        overseer.assertStack(s1, s2, s3)
+        val stateMachine = StateMachine(s1)
+        stateMachine.start(s2)
+        stateMachine.start(s3)
+        stateMachine.assertStack(s1, s2, s3)
         s1.assertCounts(1, 0, 1, 1)
         s2.assertCounts(1, 0, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
 
         val s4 = TestState("4")
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s4,
                 RelativeRange.Below(false)
             )
         )
-        overseer.assertStack(s4, s3)
+        stateMachine.assertStack(s4, s3)
         s1.assertCounts(1, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             AbsoluteStart(
                 s1,
                 AbsolutePosition.Bottom
             )
         )
-        overseer.assertStack(s1, s4, s3)
+        stateMachine.assertStack(s1, s4, s3)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s2,
                 RelativeRange.Above(false)
             ), 2)
-        overseer.assertStack(s1, s2)
+        stateMachine.assertStack(s1, s2)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 1)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(1, 1, 0, 0)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             AbsoluteStart(
                 s4,
                 AbsolutePosition.Top
             ), 1)
-        overseer.assertStack(s1, s2, s4)
+        stateMachine.assertStack(s1, s2, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Start(
                 s3,
                 RelativePosition.Below
             )
         )
-        overseer.assertStack(s1, s2, s3, s4)
+        stateMachine.assertStack(s1, s2, s3, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
         s3.assertCounts(2, 1, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
         val s5 = TestState("5")
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s5,
                 RelativeRange.Below(true)
             ), 1)
-        overseer.assertStack(s5, s4)
+        stateMachine.assertStack(s5, s4)
         s1.assertCounts(2, 2, 1, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s1,
                 RelativeRange.Above(true)
             )
         )
-        overseer.assertStack(s5, s1)
+        stateMachine.assertStack(s5, s1)
         s1.assertCounts(3, 2, 2, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s2,
                 RelativeRange.Above(false)
             )
         )
-        overseer.assertStack(s5, s1, s2)
+        stateMachine.assertStack(s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        overseer.handleMessage(
+        stateMachine.handleMessage(
             Clear(
                 s3,
                 RelativeRange.Below(false)
             ), 2)
-        overseer.assertStack(s3, s5, s1, s2)
+        stateMachine.assertStack(s3, s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)
         s3.assertCounts(3, 2, 1, 1)
@@ -443,28 +443,28 @@ class OverseerTest {
     }
 
     @Test
-    fun `when states call back into the overseer to handle messages, those messages should be handled after the current message`() {
-        val overseer = Overseer()
+    fun `when states call back into the stateMachine to handle messages, those messages should be handled after the current message`() {
+        val stateMachine = StateMachine()
         val s1 = object : State {
             override val receive: Receive = ReceiveBuilder()
                 .match<Next> { it }
                 .match { list: MutableList<State> ->
                     val last = list.removeAt(list.size - 1)
-                    list.forEach { overseer.handleMessage(Start(it)) }
+                    list.forEach { stateMachine.handleMessage(Start(it)) }
                     Start(last)
                 }
         }
 
-        overseer.start(s1)
-        overseer.assertStack(s1)
+        stateMachine.start(s1)
+        stateMachine.assertStack(s1)
 
         val s2 = TestState("2")
         val s3 = TestState("3")
         val s4 = TestState("4")
         val s5 = TestState("5")
 
-        overseer.handleMessage(mutableListOf(s2, s3, s4, s5))
+        stateMachine.handleMessage(mutableListOf(s2, s3, s4, s5))
         // s5 should start first because Start(s5) was the result of the message being handled
-        overseer.assertStack(s1, s5, s2, s3, s4)
+        stateMachine.assertStack(s1, s5, s2, s3, s4)
     }
 }

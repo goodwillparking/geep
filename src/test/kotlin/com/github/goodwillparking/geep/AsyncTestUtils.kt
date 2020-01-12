@@ -126,10 +126,10 @@ class TestFuture<V> private constructor(
 class AsyncTestHarness() {
     val async = TestAsyncContext()
     val s1 = TestState("1")
-    val overseer = Overseer(s1, async)
+    val stateMachine = StateMachine(s1, async)
 
     init {
-        overseer.assertStack(s1)
+        stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
     }
 

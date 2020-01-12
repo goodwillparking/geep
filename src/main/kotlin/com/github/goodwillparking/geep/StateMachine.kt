@@ -11,10 +11,10 @@ import kotlin.concurrent.withLock
 
 // TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
 // TODO: Have both on start/end and on focus gained/lost for async support.
-class Overseer(val asyncContext: AsyncContext = JavaAsyncContext()) {
+class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     companion object {
-        private val log = LoggerFactory.getLogger(Overseer::class.java)
+        private val log = LoggerFactory.getLogger(StateMachine::class.java)
     }
 
     constructor(initialState: State, asyncContext: AsyncContext = JavaAsyncContext()) : this(asyncContext) {
