@@ -123,20 +123,33 @@ data class Clear constructor(
 
 data class AbsoluteClear(val state: State) : AbsoluteNext()
 
-// TODO: tostring
 sealed class AbsolutePosition {
-    object Top : AbsolutePosition()
-    object Bottom : AbsolutePosition()
+
+    object Top : AbsolutePosition() {
+        override fun toString() = "Top"
+    }
+
+    object Bottom : AbsolutePosition() {
+        override fun toString() = "Bottom"
+    }
 }
 
 sealed class RelativePosition {
-    object Above : RelativePosition()
-    object Below : RelativePosition()
+
+    object Above : RelativePosition() {
+        override fun toString() = "Above"
+    }
+
+    object Below : RelativePosition() {
+        override fun toString() = "Below"
+    }
 }
 
-sealed class RelativeRange(val inclusive: Boolean) {
-    class Above(inclusive: Boolean) : RelativeRange(inclusive)
-    class Below(inclusive: Boolean) : RelativeRange(inclusive)
+sealed class RelativeRange() {
+    abstract val inclusive: Boolean
+
+    data class Above(override val inclusive: Boolean) : RelativeRange()
+    data class Below(override val inclusive: Boolean) : RelativeRange()
 }
 
 data class AsyncUpdate(
