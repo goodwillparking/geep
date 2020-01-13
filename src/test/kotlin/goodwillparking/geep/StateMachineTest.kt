@@ -61,16 +61,8 @@ class StateMachineTest {
     @Test
     fun `states should be able to modify the stack when they gain focus`() {
         val s1 = TestPrimaryState("1")
-        val s2 =
-            TestPrimaryState(
-                "2",
-                onFocusGained = Goto(s1)
-            )
-        val s3 =
-            TestPrimaryState(
-                "3",
-                onFocusGained = Start(s2)
-            )
+        val s2 = TestPrimaryState("2", onFocusGained = Goto(s1))
+        val s3 = TestPrimaryState("3", onFocusGained = Start(s2))
 
         val stateMachine = StateMachine(s3)
         stateMachine.assertStack(s3, s1)
@@ -84,10 +76,7 @@ class StateMachineTest {
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(1, 0, 1, 1)
 
-        val s4 = TestPrimaryState(
-            "4",
-            onFocusGained = Done
-        )
+        val s4 = TestPrimaryState("4", onFocusGained = Done)
 
         stateMachine.handleMessage(Start(s4))
         stateMachine.assertStack(s3, s1)
@@ -96,16 +85,8 @@ class StateMachineTest {
         s3.assertCounts(1, 0, 1, 1)
         s4.assertCounts(1, 1, 1, 1)
 
-        val s5 =
-            TestPrimaryState(
-                "5",
-                onFocusGained = Start(s3)
-            )
-        val s6 =
-            TestPrimaryState(
-                "6",
-                onFocusGained = Clear(s5)
-            )
+        val s5 = TestPrimaryState("5", onFocusGained = Start(s3))
+        val s6 = TestPrimaryState("6", onFocusGained = Clear(s5))
 
         stateMachine.handleMessage(Goto(s6))
         stateMachine.assertStack(s5, s3, s1)
@@ -120,16 +101,8 @@ class StateMachineTest {
     @Test
     fun `auxiliary states should be able to handle messages that weren't handled by their parents`() {
         val s1 = TestAuxiliaryState("1", interceptedType = String::class.java)
-        val s2 = TestAuxiliaryState(
-            "2",
-            interceptedType = Integer::class.java,
-            auxiliaryState = s1
-        )
-        val s3 = TestPrimaryState(
-            "3",
-            interceptedType = Double::class.javaObjectType,
-            auxiliaryState = s2
-        )
+        val s2 = TestAuxiliaryState("2", interceptedType = Integer::class.java, auxiliaryState = s1)
+        val s3 = TestPrimaryState("3", interceptedType = Double::class.javaObjectType, auxiliaryState = s2)
 
         val stateMachine = StateMachine(s3)
         s1.assertCounts(0, 0)
@@ -179,14 +152,8 @@ class StateMachineTest {
     @Test
     fun `states should be able to modify the stack when they start`() {
         val s1 = TestPrimaryState("1")
-        val s2 = TestPrimaryState(
-            "2",
-            onStart = Goto(s1)
-        )
-        val s3 = TestPrimaryState(
-            "3",
-            onStart = Start(s2)
-        )
+        val s2 = TestPrimaryState("2", onStart = Goto(s1))
+        val s3 = TestPrimaryState("3", onStart = Start(s2))
 
         val stateMachine = StateMachine(s3)
         stateMachine.assertStack(s3, s1)
@@ -200,10 +167,7 @@ class StateMachineTest {
         s2.assertCounts(2, 2, 0, 0)
         s3.assertCounts(1, 0, 0, 0)
 
-        val s4 = TestPrimaryState(
-            "4",
-            onStart = Done
-        )
+        val s4 = TestPrimaryState("4", onStart = Done)
 
         stateMachine.handleMessage(Start(s4))
         stateMachine.assertStack(s3, s1)
@@ -212,14 +176,8 @@ class StateMachineTest {
         s3.assertCounts(1, 0, 0, 0)
         s4.assertCounts(1, 1, 0, 0)
 
-        val s5 = TestPrimaryState(
-            "5",
-            onStart = Start(s3)
-        )
-        val s6 = TestPrimaryState(
-            "6",
-            onStart = Clear(s5)
-        )
+        val s5 = TestPrimaryState("5", onStart = Start(s3))
+        val s6 = TestPrimaryState("6", onStart = Clear(s5))
 
         stateMachine.handleMessage(Goto(s6))
         stateMachine.assertStack(s5, s3, s1)
@@ -373,58 +331,35 @@ class StateMachineTest {
         s3.assertCounts(1, 0, 1, 0)
 
         val s4 = TestPrimaryState("4")
-        stateMachine.handleMessage(
-            Clear(
-                s4,
-                RelativeRange.Below(false)
-            )
-        )
+        stateMachine.handleMessage(Clear(s4, RelativeRange.Below(false)))
         stateMachine.assertStack(s4, s3)
         s1.assertCounts(1, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        stateMachine.handleMessage(
-            AbsoluteStart(
-                s1,
-                AbsolutePosition.Bottom
-            )
-        )
+        stateMachine.handleMessage(AbsoluteStart(s1, AbsolutePosition.Bottom))
         stateMachine.assertStack(s1, s4, s3)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(1, 1, 1, 1)
         s3.assertCounts(1, 0, 1, 0)
         s4.assertCounts(1, 0, 0, 0)
 
-        stateMachine.handleMessage(
-            Clear(
-                s2,
-                RelativeRange.Above(false)
-            ), 2)
+        stateMachine.handleMessage(Clear(s2, RelativeRange.Above(false)), 2)
         stateMachine.assertStack(s1, s2)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 1)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(1, 1, 0, 0)
 
-        stateMachine.handleMessage(
-            AbsoluteStart(
-                s4,
-                AbsolutePosition.Top
-            ), 1)
+        stateMachine.handleMessage(AbsoluteStart(s4, AbsolutePosition.Top), 1)
         stateMachine.assertStack(s1, s2, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
         s3.assertCounts(1, 1, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        stateMachine.handleMessage(
-            Start(
-                s3,
-                RelativePosition.Below
-            )
-        )
+        stateMachine.handleMessage(Start(s3, RelativePosition.Below))
         stateMachine.assertStack(s1, s2, s3, s4)
         s1.assertCounts(2, 1, 1, 1)
         s2.assertCounts(2, 1, 2, 2)
@@ -432,46 +367,28 @@ class StateMachineTest {
         s4.assertCounts(2, 1, 1, 0)
 
         val s5 = TestPrimaryState("5")
-        stateMachine.handleMessage(
-            Clear(
-                s5,
-                RelativeRange.Below(true)
-            ), 1)
+        stateMachine.handleMessage(Clear(s5, RelativeRange.Below(true)), 1)
         stateMachine.assertStack(s5, s4)
         s1.assertCounts(2, 2, 1, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 1, 1, 0)
 
-        stateMachine.handleMessage(
-            Clear(
-                s1,
-                RelativeRange.Above(true)
-            )
-        )
+        stateMachine.handleMessage(Clear(s1, RelativeRange.Above(true)))
         stateMachine.assertStack(s5, s1)
         s1.assertCounts(3, 2, 2, 1)
         s2.assertCounts(2, 2, 2, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        stateMachine.handleMessage(
-            Clear(
-                s2,
-                RelativeRange.Above(false)
-            )
-        )
+        stateMachine.handleMessage(Clear(s2, RelativeRange.Above(false)))
         stateMachine.assertStack(s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)
         s3.assertCounts(2, 2, 1, 1)
         s4.assertCounts(2, 2, 1, 1)
 
-        stateMachine.handleMessage(
-            Clear(
-                s3,
-                RelativeRange.Below(false)
-            ), 2)
+        stateMachine.handleMessage(Clear(s3, RelativeRange.Below(false)), 2)
         stateMachine.assertStack(s3, s5, s1, s2)
         s1.assertCounts(3, 2, 2, 2)
         s2.assertCounts(3, 2, 3, 2)

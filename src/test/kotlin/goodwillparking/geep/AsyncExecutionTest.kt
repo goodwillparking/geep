@@ -64,9 +64,7 @@ class AsyncExecutionTest {
     @Test
     fun `a custom failure mapper can be used when running async tasks`() = AsyncTestHarness().run {
         stateMachine.handleMessage(Stay().async(ExecuteAsync {
-            throw RuntimeException(
-                "boom"
-            )
+            throw RuntimeException("boom")
         }.onFailure { "fallback" }))
         s1.assertEvents()
         async.fireAsync()
