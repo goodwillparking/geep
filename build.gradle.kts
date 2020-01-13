@@ -2,11 +2,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     java
-    kotlin("jvm") version "1.3.20"
+    kotlin("jvm") version "1.3.61"
     jacoco
 }
 
-group = "goodwillparking"
+group = "io.github.goodwillparking"
 version = "1.0"
 
 repositories {
