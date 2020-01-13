@@ -9,8 +9,6 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 
-// TODO: Generic type? Probably not. How would type be enforced on state change (Goto, Start).
-// TODO: Have both on start/end and on focus gained/lost for async support.
 class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     companion object {
@@ -198,7 +196,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
             val iterator = stack.iterator()
             while (iterator.hasNext()) {
                 val e = iterator.next()
-                if (e == element.element) {
+                if (e === element.element) {
                     if (clear.range.inclusive) {
                         cleared.add(e)
                         iterator.remove()
@@ -215,7 +213,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
             val iterator = stack.iterator()
             while (iterator.hasNext()) {
                 val e = iterator.next()
-                if (e == element.element) {
+                if (e === element.element) {
                     if (!clear.range.inclusive) {
                         keep.add(e)
                         iterator.remove()
@@ -419,11 +417,6 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 }
 
-// TODO: can this be a data class? I think I wanted default equals/hashcode, but I can't remember why.
-private class StackElement(val state: State) {
-    override fun toString() = "StackElement(state=$state)"
-}
-
 fun State.chain(): List<State> {
     var s = this
     val acc = LinkedList<State>()
@@ -437,6 +430,8 @@ fun State.chain(): List<State> {
     }
     return acc
 }
+
+private data class StackElement(val state: State)
 
 private data class IndexedElement(val element: StackElement, val index: Int)
 
