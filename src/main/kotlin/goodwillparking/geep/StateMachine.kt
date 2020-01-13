@@ -58,7 +58,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
         targetedState.chain()
             .find { state -> state.receive.isDefinedAt(message) }
             ?.also { state -> applyMessage(message, Recipient(state, indexed)) }
-            ?: kotlin.run { logUnhandled(message, indexed.element.state) }
+            ?: kotlin.run { logUnhandled(message, targetedState) }
     }
 
     // TODO: this shouldn't call queueMessageOrHandle since that will have the message handled by the focused state.
@@ -94,7 +94,6 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
         lock.withLock { processNext(AbsoluteStart(state), null) }
     }
 
-    // TODO: support processing state other than the head?
     private tailrec fun processNext(next: Next, recipient: Recipient? = null) {
 
         val oldFocused: StackElement? = stack.firstOrNull()
