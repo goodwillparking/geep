@@ -103,6 +103,9 @@ class TimerTest {
             stateMachine.handleMessage(Stay().async(SetSingleTimer("t1", Duration.ZERO, "e1")))
             stateMachine.handleMessage(Stay().async(SetSingleTimer("t2", Duration.ZERO, 1)))
 
+            primary.assertEvents()
+            aux.assertEvents()
+
             async.fireTimer("t1")
             primary.assertEvents()
             aux.assertEvents("e1")
@@ -110,6 +113,26 @@ class TimerTest {
             async.fireTimer("t2")
             primary.assertEvents(1)
             aux.assertEvents("e1")
+        }
+    }
+
+    @Test
+    fun `an aux state's parent states should not handle its timer messages`() {
+        val aux1 = TestAuxiliaryState("a1")
+        val aux2 = TestAuxiliaryState("a2", auxiliaryState = aux1)
+        val primary = TestPrimaryState("s1", auxiliaryState = aux2)
+
+        AsyncTestHarness(primary).run {
+            stateMachine.handleMessage(TargetedNext("a1", Stay().async(SetSingleTimer("t1", Duration.ZERO, "e1"))))
+
+            primary.assertEvents()
+            aux2.assertEvents()
+            aux1.assertEvents()
+
+            async.fireTimer("t1")
+            primary.assertEvents()
+            aux2.assertEvents()
+            aux1.assertEvents("e1")
         }
     }
 }

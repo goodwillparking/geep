@@ -119,7 +119,8 @@ class AsyncExecutionTest {
             stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
             stateMachine.handleMessage(Stay().async(ExecuteAsync { 1 }))
 
-            s1.assertEvents()
+            primary.assertEvents()
+            aux.assertEvents()
 
             async.fireAsync()
             primary.assertEvents()
@@ -128,6 +129,25 @@ class AsyncExecutionTest {
             async.fireAsync()
             primary.assertEvents(1)
             aux.assertEvents("e1")
+        }
+    }
+    @Test
+    fun `an aux state's parent states should not handle its async results`() {
+        val aux1 = TestAuxiliaryState("a1")
+        val aux2 = TestAuxiliaryState("a2", auxiliaryState = aux1)
+        val primary = TestPrimaryState("s1", auxiliaryState = aux2)
+
+        AsyncTestHarness(primary).run {
+            stateMachine.handleMessage(TargetedNext("a1", Stay().async(ExecuteAsync { "e1" })))
+
+            primary.assertEvents()
+            aux2.assertEvents()
+            aux1.assertEvents()
+
+            async.fireAsync()
+            primary.assertEvents()
+            aux2.assertEvents()
+            aux1.assertEvents("e1")
         }
     }
 }

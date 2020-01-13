@@ -1,7 +1,9 @@
 package com.github.goodwillparking.geep
 
 import org.junit.Assert
+import java.lang.IllegalArgumentException
 
+data class TargetedNext(val id: String, val next: Next)
 
 sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : State {
 
@@ -29,7 +31,11 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : Stat
 
     override val receive: Receive = ReceiveBuilder()
         .match { n: Next -> n }
-        .match({ a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
+        .match<TargetedNext>({ it.id == id }) { it.next }
+        .match<Any>({ interceptedType.isAssignableFrom(it::class.java) && it !is TargetedNext }) {
+            events = events + it
+            Stay()
+        }
 
     override fun onStart(): Next = Stay().also { startCount++ }
 
@@ -61,7 +67,7 @@ class TestPrimaryState(
         private set
 
     override fun toString() =
-        "TestParentState(id='$id', " +
+        "TestPrimaryState(id='$id', " +
             "auxId='${auxiliaryState?.id},' " +
             "startCount='$startCount', " +
             "endCount='$endCount', " +
@@ -99,8 +105,15 @@ open class TestAuxiliaryState(
 ) : BaseTestState(id, interceptedType), AuxiliaryState {
 
     override val receive: AuxiliaryReceive = AuxiliaryReceiveBuilder()
-        .match{ n: AbsoluteNext -> n }
-        .match({a -> interceptedType.isAssignableFrom(a::class.java) }) { a: Any -> events = events + a; Stay() }
+        .match<AbsoluteNext>{ it }
+        .match<TargetedNext>({ it.id == id }) {
+            if (it.next is AbsoluteNext) it.next
+            else throw IllegalArgumentException("TargetedNext for aux state has has invalid Next")
+        }
+        .match<Any>({ a -> interceptedType.isAssignableFrom(a::class.java) && a !is TargetedNext }) {
+            events = events + it
+            Stay()
+        }
 
     override fun toString() =
         "TestAuxiliaryState(id='$id', " +

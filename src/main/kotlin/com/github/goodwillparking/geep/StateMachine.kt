@@ -50,8 +50,12 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
         checkAndHandle(message, IndexedElement(element, index))
     }
 
-    private fun checkAndHandle(message: Any, indexed: IndexedElement) = queueMessageOrHandle(message) {
-        indexed.element.chain
+    private fun checkAndHandle(
+        message: Any,
+        indexed: IndexedElement,
+        targetedState: State = indexed.element.state
+    ) = queueMessageOrHandle(message) {
+        targetedState.chain()
             .find { state -> state.receive.isDefinedAt(message) }
             ?.also { state -> applyMessage(message, Recipient(state, indexed)) }
             ?: kotlin.run { logUnhandled(message, indexed.element.state) }
@@ -59,8 +63,9 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     // TODO: this shouldn't call queueMessageOrHandle since that will have the message handled by the focused state.
     //  We need to queue and include the recipient or something.
-    private fun checkAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
-        checkAndHandle(message, recipient.indexed)
+    //  Still need to queue in case of synchronous implementation of AsyncContex.
+    private fun asyncCheckAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
+        checkAndHandle(message, recipient.indexed, recipient.state)
     }
 
     private fun applyMessage(message: Any, recipient: Recipient) {
@@ -69,7 +74,10 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
     }
 
     private fun queueMessageOrHandle(message: Any, handler: () -> Unit) {
-        if (lock.holdCount > 1) { // TODO: Why is this > 1? Shouldn't it be >= 1?
+        // If the hold count is greater than 1,
+        // then a state's event handler is calling back into the StateMachine to handle a new message.
+        // The message should be queued so that the message being processed is completely handled before continuing.
+        if (lock.holdCount > 1) {
             messageQueue.add(message)
         } else {
             handler()
@@ -126,7 +134,8 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
             if (newElement != null) {
                 processNextAndApplyStartResult(
-                    // TODO: Maybe onStart/End should only trigger when states enter or leave the stack
+                    // TODO: onStart/End should only trigger when states enter or leave the stack.
+                    //  This goes for aux states too.
                     newElement.element.state.onStart(),
                     Recipient(newElement.element.state, newElement)
                 )
@@ -318,7 +327,8 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
                     message)
                 timers.remove(recipient.state)
             } else {
-                checkAndHandle(message, newRecipient)
+                log.debug("Firing timer {} for state {}", key, newRecipient.state)
+                asyncCheckAndHandle(message, newRecipient)
             }
             if (!isPeriodic) timerMap.remove(key)
         }
@@ -371,7 +381,8 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
                 )
                 asyncExecutions.remove(recipient.state)
             } else if (message !is Unit) {
-                checkAndHandle(message, newRecipient)
+                log.debug("Async execution has finished for state {}", newRecipient.state)
+                asyncCheckAndHandle(message, newRecipient)
             }
         }
         // TODO: The future should be removed from asyncExecutions.
@@ -382,16 +393,18 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
         // so search the stack for the recipient of the message.
         return stack.asSequence().withIndex()
             .map { (index, stackElement) ->
-                when {
-                    // Check the StackElement instead of its state
-                    // in case the client put the same state on the stack in multiple positions.
-                    stackElement === recipient.indexed.element -> stackElement.state
-                    else -> stackElement.chain.withIndex()
-                        // skip index 0 as that was checked above via the StackElement
-                        .find { (chainIndex, state) -> chainIndex != 0 && recipient.state === state }?.value
-                }?.let {
-                    // TODO: If the async task was scheduled by an aux state,
-                    //  the owner of that state should not handle the message.
+                stackElement.state.chain().withIndex()
+                    .find { (chainIndex, state) ->
+                        val sameState = recipient.state === state
+
+                        // if state is directly on stack
+                        if (chainIndex == 0) {
+                            // Check the StackElement instead of its state
+                            // in case the client put the same state on the stack in multiple positions.
+                            sameState && stackElement === recipient.indexed.element
+                        } else sameState
+
+                }?.value?.let {
                     Recipient(it, IndexedElement(stackElement, index))
                 }
             }
@@ -401,22 +414,21 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
 // TODO: can this be a data class? I think I wanted default equals/hashcode, but I can't remember why.
 private class StackElement(val state: State) {
-    // TODO: need to be lazy?
-    val chain: List<State> by lazy {
-        var s = state
-        val acc = LinkedList<State>()
-        acc.add(s)
-        var aux = s.auxiliaryState
-        // TODO: check for infinite loops
-        while (aux != null) {
-            s = aux
-            acc.add(s)
-            aux = s.auxiliaryState
-        }
-        acc
-    }
-
     override fun toString() = "StackElement(state=$state)"
+}
+
+fun State.chain(): List<State> {
+    var s = this
+    val acc = LinkedList<State>()
+    acc.add(s)
+    var aux = s.auxiliaryState
+    // TODO: check for infinite loops
+    while (aux != null) {
+        s = aux
+        acc.add(s)
+        aux = s.auxiliaryState
+    }
+    return acc
 }
 
 private data class IndexedElement(val element: StackElement, val index: Int)
