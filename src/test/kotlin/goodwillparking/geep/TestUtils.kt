@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers

@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import org.junit.Test
 import java.lang.RuntimeException
@@ -63,7 +63,11 @@ class AsyncExecutionTest {
 
     @Test
     fun `a custom failure mapper can be used when running async tasks`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { throw RuntimeException("boom") }.onFailure { "fallback" }))
+        stateMachine.handleMessage(Stay().async(ExecuteAsync {
+            throw RuntimeException(
+                "boom"
+            )
+        }.onFailure { "fallback" }))
         s1.assertEvents()
         async.fireAsync()
         s1.assertEvents("fallback")
@@ -81,7 +85,9 @@ class AsyncExecutionTest {
 
     @Test
     fun `a state can schedule multiple async executions`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }, ExecuteAsync { "e2" }))
+        stateMachine.handleMessage(Stay().async(
+            ExecuteAsync { "e1" },
+            ExecuteAsync { "e2" }))
         stateMachine.handleMessage(Stay().async(ExecuteAsync { "e3" }))
         s1.assertEvents()
 
@@ -97,9 +103,11 @@ class AsyncExecutionTest {
 
     @Test
     fun `a state can schedule an async execution and timer at the same time`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(
-            ExecuteAsync { "e1" },
-            SetSingleTimer("t1", Duration.ZERO, "e2")))
+        stateMachine.handleMessage(
+            Stay().async(
+                ExecuteAsync { "e1" },
+                SetSingleTimer("t1", Duration.ZERO, "e2")
+            ))
         s1.assertEvents()
 
         async.fireTimer("t1")
@@ -113,7 +121,11 @@ class AsyncExecutionTest {
     @Test
     fun `a state's aux state can handle the async result`() {
         val aux = TestAuxiliaryState("a1")
-        val primary = TestPrimaryState("s1", interceptedType = Int::class.javaObjectType, auxiliaryState = aux)
+        val primary = TestPrimaryState(
+            "s1",
+            interceptedType = Int::class.javaObjectType,
+            auxiliaryState = aux
+        )
 
         AsyncTestHarness(primary).run {
             stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
@@ -138,7 +150,12 @@ class AsyncExecutionTest {
         val primary = TestPrimaryState("s1", auxiliaryState = aux2)
 
         AsyncTestHarness(primary).run {
-            stateMachine.handleMessage(TargetedNext("a1", Stay().async(ExecuteAsync { "e1" })))
+            stateMachine.handleMessage(
+                TargetedNext(
+                    "a1",
+                    Stay().async(ExecuteAsync { "e1" })
+                )
+            )
 
             primary.assertEvents()
             aux2.assertEvents()

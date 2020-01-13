@@ -1,11 +1,12 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import org.junit.Assert
 import java.lang.IllegalArgumentException
 
 data class TargetedNext(val id: String, val next: Next)
 
-sealed class BaseTestState(val id: String, val interceptedType: Class<*>) : State {
+sealed class BaseTestState(val id: String, val interceptedType: Class<*>) :
+    State {
 
     var events: List<Any> = emptyList()
         protected set
@@ -59,7 +60,8 @@ class TestPrimaryState(
     val onFocusGained: Next = Stay(),
     interceptedType: Class<*> = Any::class.java,
     override val auxiliaryState: TestAuxiliaryState? = null
-) : BaseTestState(id, interceptedType), PrimaryState {
+) : BaseTestState(id, interceptedType),
+    PrimaryState {
 
     var focusGainedCount = 0
         private set
@@ -102,7 +104,8 @@ open class TestAuxiliaryState(
     val onStart: AbsoluteNext = Stay(),
     interceptedType: Class<*> = Any::class.java,
     override val auxiliaryState: TestAuxiliaryState? = null
-) : BaseTestState(id, interceptedType), AuxiliaryState {
+) : BaseTestState(id, interceptedType),
+    AuxiliaryState {
 
     override val receive: AuxiliaryReceive = AuxiliaryReceiveBuilder()
         .match<AbsoluteNext>{ it }

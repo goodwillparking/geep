@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors

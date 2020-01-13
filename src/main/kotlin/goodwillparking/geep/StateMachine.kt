@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import org.slf4j.LoggerFactory
 import java.util.IdentityHashMap
@@ -157,7 +157,12 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
                 val state = newFocused.state
                 log.debug("Focus gained for state {}", state)
                 if (state is PrimaryState) {
-                    processNext(state.onFocusGained(), Recipient(state, IndexedElement(newFocused, 0)))
+                    processNext(state.onFocusGained(),
+                        Recipient(
+                            state,
+                            IndexedElement(newFocused, 0)
+                        )
+                    )
                 }
             }
         }
@@ -405,7 +410,10 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
                         } else sameState
 
                 }?.value?.let {
-                    Recipient(it, IndexedElement(stackElement, index))
+                    Recipient(
+                        it,
+                        IndexedElement(stackElement, index)
+                    )
                 }
             }
             .firstOrNull { it != null }

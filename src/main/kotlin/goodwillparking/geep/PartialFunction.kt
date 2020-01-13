@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 interface PartialFunction<T, R> {
 

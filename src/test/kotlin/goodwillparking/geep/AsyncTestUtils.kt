@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import org.junit.Assert
 import java.util.NoSuchElementException
@@ -123,7 +123,10 @@ class TestFuture<V> private constructor(
     }
 }
 
-class AsyncTestHarness(val s1: TestPrimaryState = TestPrimaryState("1")) {
+class AsyncTestHarness(val s1: TestPrimaryState = TestPrimaryState(
+    "1"
+)
+) {
     val async = TestAsyncContext()
     val stateMachine = StateMachine(s1, async)
 

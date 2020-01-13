@@ -1,4 +1,4 @@
-package com.github.goodwillparking.geep
+package goodwillparking.geep
 
 import java.time.Duration
 
@@ -68,7 +68,8 @@ interface AsyncNext {
 }
 
 // TODO: private constructors an no data classes. Maybe not, probably is fine to expose all properties
-data class Stay constructor(override val asyncUpdate: AsyncUpdate? = null) : AbsoluteNext(), AsyncNext {
+data class Stay constructor(override val asyncUpdate: AsyncUpdate? = null) : AbsoluteNext(),
+    AsyncNext {
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
@@ -110,7 +111,9 @@ object Done : RelativeNext()
 // TODO: nullable state for clear?
 data class Clear constructor(
     val state: State,
-    val range: RelativeRange =  RelativeRange.Below(true),
+    val range: RelativeRange = RelativeRange.Below(
+        true
+    ),
     override val asyncUpdate: AsyncUpdate? = null
 ) : RelativeNext(), AsyncNext {
 
