@@ -1,6 +1,6 @@
 package goodwillparking.geep
 
-import org.junit.Test
+import org.junit.jupiter.api.Test
 import java.time.Duration
 
 class AsyncExecutionTest {

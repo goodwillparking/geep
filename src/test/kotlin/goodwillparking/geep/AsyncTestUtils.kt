@@ -1,6 +1,6 @@
 package goodwillparking.geep
 
-import org.junit.Assert
+import org.junit.jupiter.api.Assertions.fail
 import java.util.NoSuchElementException
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Future
@@ -36,7 +36,7 @@ class TestAsyncContext : AsyncContext {
                     future.get()
                 }
             }
-            ?: Assert.fail("Timer $key is not scheduled. It may have already been completed or canceled.")
+            ?: fail("Timer $key is not scheduled. It may have already been completed or canceled.")
     }
 
     fun fireAsync(index: Int = 0) {

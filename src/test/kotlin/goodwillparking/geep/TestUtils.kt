@@ -2,7 +2,7 @@ package goodwillparking.geep
 
 import org.hamcrest.MatcherAssert
 import org.hamcrest.Matchers
-import org.junit.Assert
+import org.junit.jupiter.api.Assertions.fail
 import org.mockito.Mockito
 import java.lang.Exception
 import java.time.Duration
@@ -20,16 +20,15 @@ fun StateMachine.assertStack(vararg states: State) {
     assertIterableContents(stack().asReversed(), *states)
 }
 
-inline fun <reified E : Exception> expectException(runnable: () -> Unit) {
+inline fun <reified E : Exception> expectException(runnable: () -> Unit): Unit =
     try {
         runnable()
-        Assert.fail("Expected exception of type ${E::class.java}, but no exception was thrown")
+        fail("Expected exception of type ${E::class.java}, but no exception was thrown")
     } catch (e: Exception) {
         if (e !is E) {
-            Assert.fail("Expected exception of type ${E::class.java}, but thrown exception was $e")
-        }
+            fail("Expected exception of type ${E::class.java}, but thrown exception was $e")
+        } else Unit
     }
-}
 
 @Suppress("UNCHECKED_CAST")
 fun <T> anyObject(): T {

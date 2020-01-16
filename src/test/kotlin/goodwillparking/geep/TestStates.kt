@@ -1,6 +1,6 @@
 package goodwillparking.geep
 
-import org.junit.Assert
+import org.junit.jupiter.api.Assertions.assertEquals
 import java.lang.IllegalArgumentException
 
 data class TargetedNext(val id: String, val next: Next)
@@ -45,8 +45,8 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) :
     }
 
     fun assertCounts(start: Int, end: Int) {
-        Assert.assertEquals("Start count.", start, startCount)
-        Assert.assertEquals("End count.", end, endCount)
+        assertEquals(start, startCount, "Start count.")
+        assertEquals(end, endCount, "End count.")
     }
 
     fun assertEvents(vararg events: Any) {
@@ -92,10 +92,10 @@ class TestPrimaryState(
     }
 
     fun assertCounts(start: Int, end: Int, focusGained: Int, focusLost: Int) {
-        Assert.assertEquals("Start count.", start, startCount)
-        Assert.assertEquals("End count.", end, endCount)
-        Assert.assertEquals("Focus gained count.", focusGained, focusGainedCount)
-        Assert.assertEquals("Focus lost count.", focusLost, focusLostCount)
+        assertEquals(start, startCount, "Start count.")
+        assertEquals(end, endCount, "End count.")
+        assertEquals(focusGained, focusGainedCount, "Focus gained count.")
+        assertEquals(focusLost, focusLostCount, "Focus lost count.")
     }
 }
 
