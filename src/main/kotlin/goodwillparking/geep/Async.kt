@@ -7,8 +7,12 @@ import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 
-// TODO: Support a synchronous implementation of AsyncContext (would be useful for testing).
-//  Things will get weird if the timer executes on the calling thread in the current implementation.
+/**
+ * Interface used by the [StateMachine] to schedule async tasks and timers.
+ *
+ * **Note for synchronous implementations:** A task may not be executed in the same call that scheduled that task.
+ * Doing so could cause unexpected behavior in the [StateMachine].
+ */
 // TODO: Provide method for shutting down the async context?
 interface AsyncContext {
 

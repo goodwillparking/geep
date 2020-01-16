@@ -1,7 +1,6 @@
 package goodwillparking.geep
 
 import org.junit.Test
-import java.lang.RuntimeException
 import java.time.Duration
 
 class AsyncExecutionTest {
@@ -141,6 +140,7 @@ class AsyncExecutionTest {
             aux.assertEvents("e1")
         }
     }
+
     @Test
     fun `an aux state's parent states should not handle its async results`() {
         val aux1 = TestAuxiliaryState("a1")

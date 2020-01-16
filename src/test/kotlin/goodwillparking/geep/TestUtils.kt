@@ -5,6 +5,7 @@ import org.hamcrest.Matchers
 import org.junit.Assert
 import org.mockito.Mockito
 import java.lang.Exception
+import java.time.Duration
 
 
 fun <V> assertIterableContents(actual: Iterable<V>, vararg expected: V) {
@@ -35,3 +36,6 @@ fun <T> anyObject(): T {
     Mockito.anyObject<T>()
     return null as T
 }
+
+val Int.ms
+    get() = Duration.ofMillis(this.toLong())

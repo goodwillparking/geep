@@ -123,14 +123,19 @@ class TestFuture<V> private constructor(
     }
 }
 
-class AsyncTestHarness(val s1: TestPrimaryState = TestPrimaryState("1")) {
-    val async = TestAsyncContext()
+class AsyncTestHarness<A : AsyncContext>(val s1: TestPrimaryState = TestPrimaryState("1"), val async: A) {
+
+    companion object {
+        operator fun invoke(s1: TestPrimaryState = TestPrimaryState("1")) = AsyncTestHarness(s1, TestAsyncContext())
+    }
+
     val stateMachine = StateMachine(s1, async)
 
     init {
         stateMachine.assertStack(s1)
         s1.assertCounts(1, 0, 1, 0)
+        s1.assertEvents()
     }
 
-    fun run(test: AsyncTestHarness.() -> Unit) = test()
+    fun run(test: AsyncTestHarness<A>.() -> Unit) = test()
 }

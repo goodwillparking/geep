@@ -40,6 +40,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
 
     private fun checkAndHandle(message: Any, index: Int = 0) {
         if (index < 0 || index >= stack.size) {
+            // TODO: test this case
             log.debug("Index ({}) out of bounds. Stack size: {}", index, stack.size)
             return
         }
@@ -59,10 +60,7 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
             ?: kotlin.run { logUnhandled(message, targetedState) }
     }
 
-    // TODO: this shouldn't call queueMessageOrHandle since that will have the message handled by the focused state.
-    //  We need to queue and include the recipient or something.
-    //  Still need to queue in case of synchronous implementation of AsyncContex.
-    private fun asyncCheckAndHandle(message: Any, recipient: Recipient) = queueMessageOrHandle(message) {
+    private fun asyncCheckAndHandle(message: Any, recipient: Recipient) {
         checkAndHandle(message, recipient.indexed, recipient.state)
     }
 

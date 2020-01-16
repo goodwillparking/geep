@@ -180,6 +180,7 @@ interface SetTimer {
     val passiveSet: Boolean
 }
 
+// TODO: handled negative durations, either by throwing, or by raising to 0.
 data class SetSingleTimer(
     override val key: Any,
     override val duration: Duration,
