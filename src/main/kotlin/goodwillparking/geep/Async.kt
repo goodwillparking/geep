@@ -13,7 +13,6 @@ import java.util.function.Supplier
  * **Note for synchronous implementations:** A task may not be executed in the same call that scheduled that task.
  * Doing so could cause unexpected behavior in the [StateMachine].
  */
-// TODO: Provide method for shutting down the async context?
 interface AsyncContext {
 
     fun setSingleTimer(timer: SetSingleTimer, messageHandler: (key: Any, message: Any) -> Unit): Future<*>
@@ -23,8 +22,8 @@ interface AsyncContext {
     fun runAsync(asyncTask: () -> Unit): Future<Unit>
 }
 
-class JavaAsyncContext(
-    private val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(32)
+class ExecutorAsyncContext(
+    val executor: ScheduledExecutorService = Executors.newScheduledThreadPool(32)
 ) : AsyncContext {
 
     override fun setSingleTimer(timer: SetSingleTimer, messageHandler: (key: Any, message: Any) -> Unit): Future<*> {

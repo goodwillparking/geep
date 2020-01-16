@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Assertions.fail
 import org.mockito.Mockito
 import java.lang.Exception
 import java.time.Duration
+import java.time.Instant
 
 
 fun <V> assertIterableContents(actual: Iterable<V>, vararg expected: V) {
@@ -38,3 +39,14 @@ fun <T> anyObject(): T {
 
 val Int.ms
     get() = Duration.ofMillis(this.toLong())
+
+fun awaitCondition(
+    maxWait: Duration = 1000.ms,
+    delay: Duration = maxWait.dividedBy(50),
+    condition: () -> Boolean
+) {
+    val end = Instant.now() + maxWait
+    while(!condition() && Instant.now().isBefore(end)) {
+        Thread.sleep(delay.toMillis())
+    }
+}

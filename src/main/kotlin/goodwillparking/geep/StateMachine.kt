@@ -9,13 +9,13 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 
-class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
+class StateMachine(val asyncContext: AsyncContext = ExecutorAsyncContext()) {
 
     companion object {
         private val log = LoggerFactory.getLogger(StateMachine::class.java)
     }
 
-    constructor(initialState: State, asyncContext: AsyncContext = JavaAsyncContext()) : this(asyncContext) {
+    constructor(initialState: State, asyncContext: AsyncContext = ExecutorAsyncContext()) : this(asyncContext) {
         start(initialState)
     }
 
@@ -346,23 +346,25 @@ class StateMachine(val asyncContext: AsyncContext = JavaAsyncContext()) {
         // TODO: provide some way to cancel the execution, maybe name the execution like with timers
         try {
             val future = asyncContext.runAsync {
-                val result = try {
-                    executeAsync.task()
-                } catch (e: Exception) {
-                    try {
-                        executeAsync.failureMapper(e)
-                    } catch (e2: Exception) {
-                        log.error(
-                            "Failed to map async execution failure. execution: {}, state: {}, originalFailure: {}",
-                            executeAsync,
-                            recipient.state,
-                            e,
-                            e2
-                        )
-                        Failure(e)
+                lock.withLock {
+                    val result = try {
+                        executeAsync.task()
+                    } catch (e: Exception) {
+                        try {
+                            executeAsync.failureMapper(e)
+                        } catch (e2: Exception) {
+                            log.error(
+                                "Failed to map async execution failure. execution: {}, state: {}, originalFailure: {}",
+                                executeAsync,
+                                recipient.state,
+                                e,
+                                e2
+                            )
+                            Failure(e)
+                        }
                     }
+                    handleAsyncResult(recipient, result)
                 }
-                handleAsyncResult(recipient, result)
             }
             asyncExecutions.computeIfAbsent(recipient.state) { HashSet() }.add(future)
         } catch (e: Exception) {
