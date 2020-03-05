@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import java.lang.IllegalArgumentException
@@ -38,7 +38,8 @@ sealed class BaseTestState(val id: String, val interceptedType: Class<*>) :
             Stay()
         }
 
-    override fun onStart(): Next = Stay().also { startCount++ }
+    override fun onStart(): Next = Stay()
+        .also { startCount++ }
 
     override fun onEnd() {
         endCount++

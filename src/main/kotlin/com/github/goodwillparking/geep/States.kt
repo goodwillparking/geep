@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import java.time.Duration
 
@@ -84,7 +84,8 @@ data class Start(
     val state: State,
     val position: RelativePosition = RelativePosition.Above,
     override val asyncUpdate: AsyncUpdate? = null
-) : RelativeNext(), AsyncNext {
+) : RelativeNext(),
+    AsyncNext {
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
@@ -97,7 +98,8 @@ data class AbsoluteStart(
     val state: State,
     val position: AbsolutePosition = AbsolutePosition.Top,
     override val asyncUpdate: AsyncUpdate? = null
-) : AbsoluteNext(), AsyncNext {
+) : AbsoluteNext(),
+    AsyncNext {
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
@@ -115,7 +117,8 @@ data class Clear constructor(
         true
     ),
     override val asyncUpdate: AsyncUpdate? = null
-) : RelativeNext(), AsyncNext {
+) : RelativeNext(),
+    AsyncNext {
 
     override fun withAsync(asyncUpdate: AsyncUpdate?) = copy(asyncUpdate = asyncUpdate)
 
@@ -186,7 +189,8 @@ data class SetSingleTimer(
     override val duration: Duration,
     override val message: Any,
     override val passiveSet: Boolean = false
-) : TimerUpdate(), SetTimer
+) : TimerUpdate(),
+    SetTimer
 
 data class SetPeriodicTimer(
     override val key: Any,
@@ -194,7 +198,8 @@ data class SetPeriodicTimer(
     override val message: Any,
     override val passiveSet: Boolean = false,
     val initialDelay: Duration = Duration.ZERO
-) : TimerUpdate(), SetTimer
+) : TimerUpdate(),
+    SetTimer
 
 // TODO: global async execution
 data class ExecuteAsync(val task: () -> Any, val failureMapper: (Throwable) -> Any) : AsyncTask() {

@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import java.lang.Integer.max
 import java.lang.Integer.min
@@ -9,7 +9,8 @@ import java.util.Queue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
-class ManualAsyncContext(startTime: Instant = Instant.now()) : AsyncContext {
+class ManualAsyncContext(startTime: Instant = Instant.now()) :
+    AsyncContext {
 
     private val timers: Queue<TimerInfo> = PriorityQueue { a, b -> a.fireTime.compareTo(b.fireTime) }
 
@@ -32,7 +33,10 @@ class ManualAsyncContext(startTime: Instant = Instant.now()) : AsyncContext {
 
     override fun runAsync(asyncTask: () -> Unit): Future<Unit> {
         val future = CompletableFuture<Unit>()
-        asyncTasks = asyncTasks + AsyncInfo(future, asyncTask)
+        asyncTasks = asyncTasks + AsyncInfo(
+            future,
+            asyncTask
+        )
         return future
     }
 
@@ -58,7 +62,14 @@ class ManualAsyncContext(startTime: Instant = Instant.now()) : AsyncContext {
             is SetPeriodicTimer -> timer.initialDelay
             else -> timer.duration
         }
-        timers.add(TimerInfo(timer, future, currentTime + delay, messageHandler))
+        timers.add(
+            TimerInfo(
+                timer,
+                future,
+                currentTime + delay,
+                messageHandler
+            )
+        )
         return future
     }
 

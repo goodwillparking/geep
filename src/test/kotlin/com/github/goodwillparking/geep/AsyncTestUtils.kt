@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import org.junit.jupiter.api.Assertions.fail
 import java.util.NoSuchElementException
@@ -50,8 +50,10 @@ class TestAsyncContext : AsyncContext {
         messageHandler: (key: Any, message: Any) -> Unit,
         periodic: Boolean
     ): TestFuture<*> {
-        val future = TestFuture { messageHandler(timer.key, timer.message) }
-        timers[timer.key] = ScheduledTimer(future, periodic)
+        val future =
+            TestFuture { messageHandler(timer.key, timer.message) }
+        timers[timer.key] =
+            ScheduledTimer(future, periodic)
         return future
     }
 
@@ -123,10 +125,18 @@ class TestFuture<V> private constructor(
     }
 }
 
-class AsyncTestHarness<A : AsyncContext>(val s1: TestPrimaryState = TestPrimaryState("1"), val async: A) {
+class AsyncTestHarness<A : AsyncContext>(val s1: TestPrimaryState = TestPrimaryState(
+    "1"
+), val async: A) {
 
     companion object {
-        operator fun invoke(s1: TestPrimaryState = TestPrimaryState("1")) = AsyncTestHarness(s1, TestAsyncContext())
+        operator fun invoke(s1: TestPrimaryState = TestPrimaryState(
+            "1"
+        )
+        ) = AsyncTestHarness(
+            s1,
+            TestAsyncContext()
+        )
     }
 
     val stateMachine = StateMachine(s1, async)

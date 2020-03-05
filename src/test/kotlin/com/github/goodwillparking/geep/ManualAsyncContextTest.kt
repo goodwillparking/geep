@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import org.junit.jupiter.api.Test
 
@@ -6,7 +6,9 @@ class ManualAsyncContextTest {
 
     @Test
     fun `it should fire single timers`() = manualHarness().run {
-        stateMachine.handleMessage(Stay().async(SetSingleTimer("t1", 1.ms, "e1")))
+        stateMachine.handleMessage(
+            Stay()
+                .async(SetSingleTimer("t1", 1.ms, "e1")))
         s1.assertEvents()
 
         async.increment(2.ms)
@@ -18,7 +20,9 @@ class ManualAsyncContextTest {
 
     @Test
     fun `timers with duration of zero should not immediately fire`() = manualHarness().run {
-        stateMachine.handleMessage(Stay().async(SetSingleTimer("t1", 0.ms, "e1")))
+        stateMachine.handleMessage(
+            Stay()
+                .async(SetSingleTimer("t1", 0.ms, "e1")))
         s1.assertEvents()
 
         // any increment, even if it is 0 should trigger the 0 duration timer
@@ -29,7 +33,9 @@ class ManualAsyncContextTest {
     @Test
     fun `periodic timers should fire a number of times proportional to their period`() = manualHarness().run {
         val period = 5.ms
-        stateMachine.handleMessage(Stay().async(SetPeriodicTimer("t1", period, "e1")))
+        stateMachine.handleMessage(
+            Stay()
+                .async(SetPeriodicTimer("t1", period, "e1")))
         s1.assertEvents()
 
         // any increment, even if it is 0 should trigger the 0 duration initial delay
@@ -47,7 +53,12 @@ class ManualAsyncContextTest {
     fun `multiple timers should fire together`() = manualHarness().run {
         stateMachine.handleMessage(
             Stay().async(
-                SetPeriodicTimer("t1", 2.ms, "e1", initialDelay = 2.ms),
+                SetPeriodicTimer(
+                    "t1",
+                    2.ms,
+                    "e1",
+                    initialDelay = 2.ms
+                ),
                 SetSingleTimer("t2", 3.ms, "e2")
             )
         )
@@ -60,7 +71,9 @@ class ManualAsyncContextTest {
 
     @Test
     fun `the time cannot be incremented with a negative amount`() = manualHarness().run {
-        stateMachine.handleMessage(Stay().async(SetSingleTimer("t1", 2.ms, "e1")))
+        stateMachine.handleMessage(
+            Stay()
+                .async(SetSingleTimer("t1", 2.ms, "e1")))
         s1.assertEvents()
 
         async.increment((-2).ms)
@@ -83,7 +96,11 @@ class ManualAsyncContextTest {
         async.increment(1.ms)
         s1.assertEvents("e2")
 
-        stateMachine.handleMessage(Stay().async(CancelTimer("t1"), CancelTimer("t2")))
+        stateMachine.handleMessage(
+            Stay().async(
+                CancelTimer("t1"),
+                CancelTimer("t2")
+            ))
 
         async.increment(2.ms)
         s1.assertEvents("e2")
@@ -91,7 +108,9 @@ class ManualAsyncContextTest {
 
     @Test
     fun `a state can run some async execution`() = manualHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e1" }))
         s1.assertEvents()
         async.fireCurrentAsyncTasks()
         s1.assertEvents("e1")
@@ -100,7 +119,9 @@ class ManualAsyncContextTest {
     @Test
     fun `a failed async execution should send a Failure message back to the caller`() = manualHarness().run {
         val exception = RuntimeException("boom")
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { throw exception }))
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { throw exception }))
         s1.assertEvents()
         async.fireCurrentAsyncTasks()
         s1.assertEvents(Failure(exception))
@@ -113,7 +134,9 @@ class ManualAsyncContextTest {
                 ExecuteAsync { "e1" },
                 ExecuteAsync { "e2" })
         )
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e3" }))
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e3" }))
         stateMachine.handleMessage(
             Stay().async(
                 ExecuteAsync { "e4" },
@@ -152,7 +175,11 @@ class ManualAsyncContextTest {
 
     @Test
     fun `either the current tasks can be fired, or current and future tasks`() = manualHarness().run {
-        fun oneThenAnother(event: String) = Stay().async(ExecuteAsync { Stay().async(ExecuteAsync { event }) })
+        fun oneThenAnother(event: String) = Stay()
+            .async(ExecuteAsync {
+                Stay()
+                    .async(ExecuteAsync { event })
+            })
         stateMachine.handleMessage(oneThenAnother("e1"))
         s1.assertEvents()
 
@@ -175,5 +202,6 @@ class ManualAsyncContextTest {
         s1.assertEvents("e1", "e2", "e3")
     }
 
-    private fun manualHarness() = AsyncTestHarness(async = ManualAsyncContext())
+    private fun manualHarness() =
+        AsyncTestHarness(async = ManualAsyncContext())
 }

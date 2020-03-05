@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import org.slf4j.LoggerFactory
 import java.util.IdentityHashMap
@@ -56,7 +56,9 @@ class StateMachine(val asyncContext: AsyncContext = ExecutorAsyncContext()) {
     ) = queueMessageOrHandle(message) {
         targetedState.chain()
             .find { state -> state.receive.isDefinedAt(message) }
-            ?.also { state -> applyMessage(message, Recipient(state, indexed)) }
+            ?.also { state -> applyMessage(message,
+                Recipient(state, indexed)
+            ) }
             ?: kotlin.run { logUnhandled(message, targetedState) }
     }
 

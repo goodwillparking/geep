@@ -1,4 +1,4 @@
-package goodwillparking.geep
+package com.github.goodwillparking.geep
 
 import org.junit.jupiter.api.Test
 import java.time.Duration
@@ -6,16 +6,22 @@ import java.time.Duration
 class AsyncExecutionTest {
 
     @Test
-    fun `a state can run some async execution`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
+    fun `a state can run some async execution`() = AsyncTestHarness()
+        .run {
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e1" }))
         s1.assertEvents()
         async.fireAsync()
         s1.assertEvents("e1")
     }
 
     @Test
-    fun `a state can handle messages while waiting for async execution`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
+    fun `a state can handle messages while waiting for async execution`() = AsyncTestHarness()
+        .run {
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e1" }))
         s1.assertEvents()
 
         stateMachine.handleMessage("e2")
@@ -26,7 +32,8 @@ class AsyncExecutionTest {
     }
 
     @Test
-    fun `the state that started the async execution will receive the result`() = AsyncTestHarness().run {
+    fun `the state that started the async execution will receive the result`() = AsyncTestHarness()
+        .run {
         val s2 = TestPrimaryState("s2")
         stateMachine.handleMessage(Start(s2))
         stateMachine.assertStack(s1, s2)
@@ -35,7 +42,9 @@ class AsyncExecutionTest {
         stateMachine.handleMessage(Start(s3))
         stateMachine.assertStack(s1, s2, s3)
 
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }), index = 1)
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e1" }), index = 1)
         s1.assertEvents()
         s2.assertEvents()
         s3.assertEvents()
@@ -52,26 +61,33 @@ class AsyncExecutionTest {
     }
 
     @Test
-    fun `a failed async execution should send a Failure message back to the caller`() = AsyncTestHarness().run {
+    fun `a failed async execution should send a Failure message back to the caller`() = AsyncTestHarness()
+        .run {
         val exception = RuntimeException("boom")
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { throw exception }))
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { throw exception }))
         s1.assertEvents()
         async.fireAsync()
         s1.assertEvents(Failure(exception))
     }
 
     @Test
-    fun `a custom failure mapper can be used when running async tasks`() = AsyncTestHarness().run {
-        stateMachine.handleMessage(Stay().async(ExecuteAsync {
-            throw RuntimeException("boom")
-        }.onFailure { "fallback" }))
+    fun `a custom failure mapper can be used when running async tasks`() = AsyncTestHarness()
+        .run {
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync {
+                    throw RuntimeException("boom")
+                }.onFailure { "fallback" }))
         s1.assertEvents()
         async.fireAsync()
         s1.assertEvents("fallback")
     }
 
     @Test
-    fun `when a custom failure mapper fails, send a Failure back to the caller`() = AsyncTestHarness().run {
+    fun `when a custom failure mapper fails, send a Failure back to the caller`() = AsyncTestHarness()
+        .run {
         val exception = RuntimeException("boom")
         stateMachine.handleMessage(Stay().async(
             ExecuteAsync { throw exception }.onFailure { throw RuntimeException("second boom") }))
@@ -81,11 +97,14 @@ class AsyncExecutionTest {
     }
 
     @Test
-    fun `a state can schedule multiple async executions`() = AsyncTestHarness().run {
+    fun `a state can schedule multiple async executions`() = AsyncTestHarness()
+        .run {
         stateMachine.handleMessage(Stay().async(
             ExecuteAsync { "e1" },
             ExecuteAsync { "e2" }))
-        stateMachine.handleMessage(Stay().async(ExecuteAsync { "e3" }))
+        stateMachine.handleMessage(
+            Stay()
+                .async(ExecuteAsync { "e3" }))
         s1.assertEvents()
 
         async.fireAsync(1)
@@ -99,7 +118,8 @@ class AsyncExecutionTest {
     }
 
     @Test
-    fun `a state can schedule an async execution and timer at the same time`() = AsyncTestHarness().run {
+    fun `a state can schedule an async execution and timer at the same time`() = AsyncTestHarness()
+        .run {
         stateMachine.handleMessage(
             Stay().async(
                 ExecuteAsync { "e1" },
@@ -125,8 +145,12 @@ class AsyncExecutionTest {
         )
 
         AsyncTestHarness(primary).run {
-            stateMachine.handleMessage(Stay().async(ExecuteAsync { "e1" }))
-            stateMachine.handleMessage(Stay().async(ExecuteAsync { 1 }))
+            stateMachine.handleMessage(
+                Stay()
+                    .async(ExecuteAsync { "e1" }))
+            stateMachine.handleMessage(
+                Stay()
+                    .async(ExecuteAsync { 1 }))
 
             primary.assertEvents()
             aux.assertEvents()
@@ -151,7 +175,8 @@ class AsyncExecutionTest {
             stateMachine.handleMessage(
                 TargetedNext(
                     "a1",
-                    Stay().async(ExecuteAsync { "e1" })
+                    Stay()
+                        .async(ExecuteAsync { "e1" })
                 )
             )
 
