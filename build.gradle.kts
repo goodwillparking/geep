@@ -9,7 +9,7 @@ plugins {
 }
 
 group = "com.github.goodwillparking"
-version = "1.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -30,11 +30,6 @@ configure<JavaPluginConvention> {
     sourceCompatibility = JavaVersion.VERSION_1_8
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
-
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
 }
@@ -47,9 +42,23 @@ tasks.withType<Test>().configureEach {
     useJUnitPlatform()
 }
 
+val sourcesJar by tasks.creating(Jar::class) {
+    archiveClassifier.set("sources")
+    from(sourceSets.getByName("main").allSource)
+}
+
+val javadocJar by tasks.creating(Jar::class) {
+    archiveClassifier.set("javadoc")
+    from(tasks["javadoc"])
+}
+
 publishing.publications.create<MavenPublication>("mavenJava") {
 
+    artifact(sourcesJar)
+    artifact(javadocJar)
+
     pom {
+        name.set(project.name)
         description.set("Geep is state machine library for Kotlin.")
         url.set("https://github.com/goodwillparking/geep")
 
@@ -72,6 +81,8 @@ publishing.publications.create<MavenPublication>("mavenJava") {
             developerConnection.set("scm:git:https://github.com/goodwillparking/geep.git")
             url.set("https://github.com/goodwillparking/geep")
         }
+
+        from(components.findByName("java"))
     }
 }
 
@@ -95,4 +106,5 @@ publishing {
 
 signing {
     sign(publishing.publications["mavenJava"])
+    sign(configurations.archives.get())
 }
